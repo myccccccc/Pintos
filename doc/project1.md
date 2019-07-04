@@ -281,6 +281,9 @@ timer clicks | R(A) | R(B) | R( C) | P(A) | P(B) | P(C) | thread to run
 
 In addition, it is stated that recent CPU is only incremented by 1 for each timer interrupt; we assumed that each timer tick corresponded to a timer interrupt, so that each row would result in one of the 3 recent CPUs being increased by 4.
 
-What's more, since the timer frequency is not specified in this question, we assumed that it is larger then 36 timer ticks, which means load average will never be updated in this process and they are initialized to 0. 
+  
+
+What's more, since the timer frequency is not specified in this question, we assumed that it is larger then 36 timer ticks, which means load average will never be updated in this process and they are initialized to 0.
+
 ---
 
