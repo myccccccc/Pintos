@@ -186,25 +186,25 @@ In the case that there **IS** priority donation, the threads would print out in 
 
 ### Q2:
 
-timer ticks | R(A) | R(B) | R(C) | P(A) | P(B) | P(C) | thread to run
+icks | R(A) | R(B) | R( C) | P(A) | P(B) | P(C) | thread to run
 ------------|------|------|------|------|------|------|--------------
- 0          |  0   |  0   |  0   | 63   | 61   | 59   |  A
- 4          |  4   |  0   |  0   | 62   | 61   | 59   |  A
- 8          |  8   |  0   |  0   | 61   | 61   | 59   |  B
-12          |  8   |  4   |  0   | 61   | 60   | 59   |  A
-16          |  12  |  4   |  0   | 60   | 60   | 59   |  B
-20          |  12  |  8   |  0   | 60   | 59   | 59   |  A
-24          |  16  |  8   |  0   | 59   | 59   | 59   |  C
-28          |  16  |  8   |  4   | 59   | 59   | 58   |  B
-32          |  16  |  12  |  4   | 59   | 58   | 58   |  A
-36          |  20  |  12  |  4   | 58   | 58   | 58   |  C
+ 0          | 0     | 0   | 0     | 63     |  61    | 59     |A
+ 4          |4      | 0     | 0     |  62    |  61    | 59     |A
+ 8          |8      | 0     | 0     |  61    |  61    | 59     |A
+12          |12      | 0     | 0     | 60     | 61     | 59     |B
+16          |12      | 4     | 0     | 60     | 60     | 59     |A
+20          |16      |4      | 0     | 59     | 60     | 59     |B
+24          | 16     |8      | 0     | 59     | 59     | 59     |A
+28          |20      |8      |0      | 58     | 59     | 59     |B
+32          | 20     |  12    |  0    |  58    |   58   |   59   |C
+36          |   20   | 12     |    4  |    58  |    58  |   58   | A
 
+### Q3:
 
-### Q3: 
+Since the timer frequency  is not  specified in this question, we assumed that it is larger then 36 timer ticks, which means load average will never be updated in this process and they are initialized to 0. 
 
-The main specification ambiguity is what to do when two or more threads share a maximum priority. For example, on line 3 of the table, we have the issue of not knowing whether to run thread A or B next, since both have priority 61, the highest in the current row. The deciding factor we choose to use here is to make it so that the thread that has the lowest amount of recent CPU is scheduled to run next. If that, too, results in a tie, then a random thread out of the doubly-tied threads will be chosen to be run next.
-
-In addition, it is stated that recent CPU is only incremented by 1 for each timer interrupt; we assumed that teach timer tick corresponded to a timer interrupt, so that each row would result in one of the 3 recent CPUs being increased by 4.
+There is also ambiguity about which thread to select when we have multiple threads with the same priority.
+In the example above, I just choose the next thread alphabetically, i.e. A, B, then C.
 
 ---
 
