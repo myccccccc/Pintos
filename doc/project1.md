@@ -196,8 +196,9 @@ timer ticks | R(A) | R(B) | R(C) | P(A) | P(B) | P(C) | thread to run
 36          |  20  |  12  |  4   | 58   | 58   | 58   |  C
 
 
-###
-Q3: The main specification ambiguity is what to do when two or more threads share a maximum priority. For example, on line 3 of the table, we have the issue of not knowing whether to run thread A or B next, since both have priority 61, the highest in the current row. The deciding factor we choose to use here is to make it so that the thread that has the lowest amount of recent CPU is scheduled to run next. If that, too, results in a tie, then a random thread out of the doubly-tied threads will be chosen to be run next.
+### Q3: 
+
+The main specification ambiguity is what to do when two or more threads share a maximum priority. For example, on line 3 of the table, we have the issue of not knowing whether to run thread A or B next, since both have priority 61, the highest in the current row. The deciding factor we choose to use here is to make it so that the thread that has the lowest amount of recent CPU is scheduled to run next. If that, too, results in a tie, then a random thread out of the doubly-tied threads will be chosen to be run next.
 
 In addition, it is stated that recent CPU is only incremented by 1 for each timer interrupt; we assumed that teach timer tick corresponded to a timer interrupt, so that each row would result in one of the 3 recent CPUs being increased by 4.
 
