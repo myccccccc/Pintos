@@ -30,6 +30,5 @@ icks | R(A) | R(B) | R( C) | P(A) | P(B) | P(C) | thread to run
 3.
 Since the timer frequency  is not  specified in this question, we assumed that it is larger then 36 timer ticks, which means load average will never be updated in this process and they are initialized to 0. 
 
-There is also ambiguity about which thread to select when we have multiple threads with the same priority
-
+There is also ambiguity about which thread to select when we have multiple threads with the same priority.
 In the example above, I just choose the next thread alphabetically, i.e. A, B, then C.
