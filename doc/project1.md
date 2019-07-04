@@ -164,6 +164,69 @@ The use of `effectivePriority` as the actual changing and referenced-for-compari
 
 ---
 
+## Task 3: Multi-level Feedback Queue Scheduler (MLFQS)
+
+### Data structures and functions
+
+#### In `threads.h`:
+```C
+struct thread {
+    ...
+	fixed_point_t niceness; /* Niceness initialized to be zero in init_thread. */
+	fixed_point_t recent_cpu;   /* Recent CPU initialized to be zero in init_thread. */
+	...
+}
+```
+#### In `threads.c`:
+```C
+fixed_point_t load_avg; /* load_avg initialized to be zero in thread_start. */
+```
+#### In `timer.c`:
+```C
+static  void
+timer_interrupt (struct intr_frame *args UNUSED)
+{
+    ...
+    if (thread_mlfqs)
+    {
+    	mlfqs_cur_thread_recent_cpu_add_one ();
+    	if (ticks % TIMER_FREQ == 0)
+        	mlfqs_update_load_avg();
+        	mlfqs_update_all_thread_recent_cpu ();
+    	if (ticks % 4 == 0)
+        	mlfqs_update_all_thread_priority_then_sort ();
+    }
+    ...
+}
+/* thread_current()->recent_cpu add 1. */
+void mlfqs_cur_thread_recent_cpu_add_one (void)
+/* update the load avg */
+void mlfqs_update_load_avg (void);
+/* update all thread recent cpu */
+void mlfqs_update_all_thread_recent_cpu (void);
+/* update all thread priority and then sort the ready q according to priority */
+void mlfqs_update_all_thread_priority_then_sort (void);
+```
+### Algorithms
+
+#### Update `recent_cpu`, thread priority, and `load_avg`
+
+We place the logic for updating `recent_cpu` , thread priority and `load_avg` in `thread_interrupt(...)` because this happens every tick.  The current running thread’s `recent_cpu` value will add one for every `thread_interrupt(...)`.  Then, if the `ticks` value is divisible by 4, we update every thread’s priority and sort the ready queue, and limit its min/max value to `PRI_MIN` or `PRI_MAX`, respectively.  If the `ticks` value is divisible by `TIMER_FREQ` we update all threads' `recent_cpu` and load_avg.
+
+#### Scheduling the next thread
+
+Because we sort the ready q every time will change a thread's priority, so the scheduler will always pick the thread with the highest priority. So If there are multiple threads with the highest priority, then the scheduler will cycle through each of these threads in ”round robin” fashion, because every time a thread is put on the ready queue, it is inserted according to it's priority, it will be placed at the end of the threads who has the same priority as him.
+
+### Synchronization
+
+All the update happen in `timer_interrupt(...)`, so we are in the middle of external interrupt. So I think we need to do nothing to prevent it from being interrupt.
+
+### Rational
+
+This implementation of MLFQS is straightforward and can satisfy all the requirements in the specification document. The majority of computation is done in the `timer_ticks`, which can be easily realized.
+
+---
+
 ## Additional Questions:
 
 ### Q1: 
