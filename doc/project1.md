@@ -249,7 +249,7 @@ In the case that there **IS** priority donation, the threads would print out in 
 
 ### Q2:
 
-icks | R(A) | R(B) | R( C) | P(A) | P(B) | P(C) | thread to run
+timer clicks | R(A) | R(B) | R( C) | P(A) | P(B) | P(C) | thread to run
 ------------|------|------|------|------|------|------|--------------
  0          | 0     | 0   | 0     | 63     |  61    | 59     |A
  4          |4      | 0     | 0     |  62    |  61    | 59     |A
