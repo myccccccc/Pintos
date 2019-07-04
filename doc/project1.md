@@ -6,7 +6,7 @@ Design Document for Project 1: Threads
 * Jiasheng Qin <jqin0713@berkeley.edu>
 * Jingqi Wang <jackiewang@berkeley.edu>
 * Yingchun Ma <mayingchun@berkeley.edu>
-* Zewei DIng <ding.zew@berkeley.edu>
+* Zewei Ding <ding.zew@berkeley.edu>
 
 ---
 
@@ -283,7 +283,7 @@ In addition, it is stated that recent CPU is only incremented by 1 for each time
 
   
 
-What's more, since the timer frequency is not specified in this question, we assumed that it is larger then 36 timer ticks, which means load average will never be updated in this process and they are initialized to 0.
+What's more, since the timer frequency is not specified in this question, we assumed that it is larger then 36 timer ticks, which means load average will never be updated in this process and it is initialized to 0.
 
 ---
 
