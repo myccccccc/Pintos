@@ -62,22 +62,26 @@ Before we do `thread_block()` in `timer_sleep(...)` we need to do `intr_disable(
 Our design is easy to conceptualize, it will only require a little bit amount of code, we only add one member to struct thread. And we didn't add any globle variable. To put the thread in to sleep will only take constant time. To wake up a thread, we need to iterate through all the threads which will only take linear time.
 
 ---
-## Task 2: Priority Scheduler (Jiasheng Qin)
+## Task 2: Priority Scheduler
 
 ### Data structures and functions:
 For the main body of the priority scheduler, I plan to use a 64 slot array corresponding to the 54 priority values possible for each thread (with indices 0 to 63 all corresponding to the specific priority value - i.e., the slot in the array corresponds to the highest priority elements. Each slot points to a list of all threads/jobs (one-to-one in this case, so I will use the two terms synonymously) with that particular priority. Specifically, the data structure will be of form
 
+```C
 struct priorityScheduler {
     struct list* allJobs;
     int topPriority;
 }
+```
 
 Inside the semaphore and condition structs, waiters will be changed from a list to another struct identical to priorityScheduler in its format:
 
+```C
 struct waitScheduler {
      struct list* waitingJobs;
      int topPriority;
 }
+```
 
 It will operate in the same manner as priorityScheduler as described in Algorithms, but will be used for determining the next waiting thread to select based on priority.
 
@@ -87,14 +91,17 @@ Effective priority will be used during the priority donation process, and will i
 
 donationRecipients is a list of all threads that have received priority donation from this particular thread. It is used in order to correctly implement nested/recursive donation.
 
+```C
 Struct thread {
 ….<variables already present>...
     int effectivePriority;
     struct list donationRecipients;
 }
+```
 
 
 ### Algorithms:
+
 Regarding the priority scheduler, whenever a job with a particular priority requests CPU usage (i.e. threads that have the THREAD_READY state), it will be added to the back of the list with the appropriate priority. The variable topPriority has a default value of -1, and will be used to keep track of the highest priority for which there is at least one job (i.e. the corresponding job list is non-empty).
 
 If all jobs are finished (at every single priority level), topPriority will return to having a value of -1. Otherwise, computing the next thread to execute will essentially follow the format of
@@ -114,12 +121,14 @@ Notice that the inequality uses the current lock holder’s effective priority: 
 
 There is another scenario, that requires the use of the donationRecipients list: what if A donates its priority to B after B donates to C? In this case, C’s priority should ultimately be raised to 3; that is to say, the order of donation does not matter - only the existence of such donations is relevant. Thus, to recursively donate priorities, we would implement a process with pseudocode similar to the following. Notice that this results in a depth-first traversal, but the order does not matter - all effective priorities will be updated to targetPriority by the end. Before calling this, we would have to make sure B’s effective priority is actually lower than A’s, because otherwise we wouldn’t need to donate to begin with.
 
+```C
 void changeChildrenPriorities (struct thread* t, int targetPriority) {
      t->effectivePriority = targetPriority;
      for (struct thread c in t->donationRecipients) {
            changeChildrenPriorities(&c, targetPriority);
      }
 }
+```
 
 Restoring priorities is relatively simple in this implementation. Inside lock_release, directly after the assertions, we can perform: lock->holder.effectivePriority = lock->holder.priority. The key point is that priority itself never changes, so we can be assured that this will always restore to the original value regardless of how many donations have occurred.
 
@@ -129,6 +138,7 @@ The reason that nested recursion is accounted for in this scenario is because hi
 Lock_try_acquire will undergo similar changes to lock_acquire, with the conditional check-and-sets occurring in the case of !success (i.e. we add an else case and put the conditions there).
 
 ### Synchronization:
+
 Priority scheduler access: the scheduler must maintain proper ordering in the various lists. We can use a lock to achieve this; for example, in thread_unblock inside thread.c, we currently have list_push_back being called. After adapting this to our priority scheduler model, we could issue a lock_acquire before and a lock_release afterwards. This way, even if multiple threads want to make changes to the priority scheduler, they must go in the order in which the threads were unblocked. Both pushing AND popping must be gated off.
 Wait scheduler access: similar to the priority scheduler case. In sema_down and sema_up, a lock will be placed before an edit to the wait scheduler, with lock_acquire being before and lock_release afterwards. We also need to make analogous changes inside cond_wait and cond_signal.
 Effective priority changes: lock_acquire must take place before the conditionals and lock_release will be issued after the setting is finished. This is to ensure that the donated priority is the effective priority of the donator AT THE TIME OF THE DONATION, instead of potentially some later alteration. For example, consider threads A, B, and C with priorities 3, 2, and 1, respectively. If B attempts to donate its priority to C, but was being blocked somehow, and during the blockage A donated its priority to B, B should STILL donate a priority of 2 to C, not 3 (though eventually it would become 3 after A’s donation passes through).
@@ -186,7 +196,8 @@ timer ticks | R(A) | R(B) | R(C) | P(A) | P(B) | P(C) | thread to run
 36          |  20  |  12  |  4   | 58   | 58   | 58   |  C
 
 
-### Q3: The main specification ambiguity is what to do when two or more threads share a maximum priority. For example, on line 3 of the table, we have the issue of not knowing whether to run thread A or B next, since both have priority 61, the highest in the current row. The deciding factor we choose to use here is to make it so that the thread that has the lowest amount of recent CPU is scheduled to run next. If that, too, results in a tie, then a random thread out of the doubly-tied threads will be chosen to be run next.
+###
+Q3: The main specification ambiguity is what to do when two or more threads share a maximum priority. For example, on line 3 of the table, we have the issue of not knowing whether to run thread A or B next, since both have priority 61, the highest in the current row. The deciding factor we choose to use here is to make it so that the thread that has the lowest amount of recent CPU is scheduled to run next. If that, too, results in a tie, then a random thread out of the doubly-tied threads will be chosen to be run next.
 
 In addition, it is stated that recent CPU is only incremented by 1 for each timer interrupt; we assumed that teach timer tick corresponded to a timer interrupt, so that each row would result in one of the 3 recent CPUs being increased by 4.
 
