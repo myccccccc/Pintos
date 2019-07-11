@@ -93,6 +93,10 @@ struct thread
     struct list_elem allelem;           /* List element for all threads list. */
     int base_priority;
 
+    int nice;                           /* Current nice value */
+
+    fixed_point_t recent_cpu;                     /* Current recent CPU value */
+
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
@@ -125,6 +129,8 @@ struct thread
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */
 extern bool thread_mlfqs;
+
+fixed_point_t load_avg;                       /* Current load average */
 
 void thread_init (void);
 void thread_start (void);
