@@ -99,6 +99,9 @@ struct thread
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
 #endif
+    /* Statistics for mlfqs scheduler*/
+    int nice;                        /* Niceness initialized to be zero in init_thread. */
+	  fixed_point_t recent_cpu;            /* Recent CPU initialized to be zero in init_thread. */
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
