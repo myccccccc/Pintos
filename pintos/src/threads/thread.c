@@ -173,15 +173,18 @@ thread_tick (void)
     }
   }
 
+
+
   if (timer_ticks() % TIMER_FREQ == 0) {
-    //thread_update_load_avg();
-    thread_update_recent_cpu_all();
     thread_update_load_avg();
+    thread_update_recent_cpu_all();
+    //thread_update_load_avg();
   }
 
   if (timer_ticks() % 4 == 0 && thread_mlfqs) {
      update_priority_mlfqs_all();
   }
+
 
  /* Enforce preemption. */
   if (++thread_ticks >= TIME_SLICE) {
@@ -657,7 +660,7 @@ init_thread (struct thread *t, const char *name, int priority)
 
   //If mlfqs IS active, then the only time we can manually set priorities is for the main thread; since the main thread
   //is added at the end of this call, all_list will be empty at this point
-  if (!thread_mlfqs || list_empty(&all_list)) {
+  if (!thread_mlfqs || strcmp(name, "main") == 0) {
     t->priority = priority;
     t->base_priority = priority;
 
