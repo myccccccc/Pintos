@@ -85,7 +85,12 @@ static tid_t allocate_tid (void);
 
 void count_number_ready_or_running(struct thread*, void*);
 
-void thread_update_recent_cpu(void);
+void thread_update_recent_cpu(struct thread*, void* aux UNUSED);
+void thread_update_recent_cpu_all(void);
+
+void update_priority_mlfqs(struct thread*, void* aux UNUSED);
+void update_priority_mlfqs_all(void);
+
 void thread_update_load_avg(void);
 
 int calculate_new_priority_mlfqs(fixed_point_t, int);
@@ -170,15 +175,16 @@ thread_tick (void)
 
   if (timer_ticks() % TIMER_FREQ == 0) {
     //thread_update_load_avg();
-    thread_update_recent_cpu();
+    thread_update_recent_cpu_all();
     thread_update_load_avg();
+  }
+
+  if (timer_ticks() % 4 == 0 && thread_mlfqs) {
+     update_priority_mlfqs_all();
   }
 
  /* Enforce preemption. */
   if (++thread_ticks >= TIME_SLICE) {
-    if (thread_mlfqs) {
-        t->priority = calculate_new_priority_mlfqs(t->recent_cpu, t->nice);
-    }
     intr_yield_on_return ();
   }
 }
@@ -428,6 +434,16 @@ count_number_ready_or_running (struct thread *t, void* aux) {
     }
 }
 
+void
+update_priority_mlfqs(struct thread* t, void* aux UNUSED) {
+  t->priority = calculate_new_priority_mlfqs(t->recent_cpu, t->nice);
+}
+
+void
+update_priority_mlfqs_all(void) {
+  thread_foreach(update_priority_mlfqs, NULL);
+}
+
 
 /* Returns the current thread's priority. */
 int
@@ -476,8 +492,9 @@ thread_update_load_avg (void)
    enum intr_level old_level;
    old_level = intr_disable();
 
-   //Counts all threads that are either already running or ready
    int num_ready_threads = 0;
+   //Counts all threads that are either already running or ready
+   //int num_ready_threads = list_size(&ready_list) + 1;
 
    thread_foreach (count_number_ready_or_running, &num_ready_threads);
 
@@ -510,7 +527,7 @@ thread_get_recent_cpu (void)
 }
 
 void
-thread_update_recent_cpu(void)
+thread_update_recent_cpu(struct thread* thr, void* aux UNUSED)
 {
   enum intr_level old_level;
   old_level = intr_disable();
@@ -520,15 +537,20 @@ thread_update_recent_cpu(void)
 
   fixed_point_t LAFrac = fix_div(twoLA, twoLAplus);
 
-  fixed_point_t recent_cpu = thread_current()->recent_cpu;
-  fixed_point_t nice_fixed = fix_int(thread_get_nice());
+  fixed_point_t recent_cpu = thr->recent_cpu;
+  fixed_point_t nice_fixed = fix_int(thr->nice);
 
   fixed_point_t product = fix_mul(LAFrac, recent_cpu);
   fixed_point_t sum = fix_add(product, nice_fixed);
 
-  thread_current()->recent_cpu = sum;
+  thr->recent_cpu = sum;
 
   intr_set_level(old_level);
+}
+
+void
+thread_update_recent_cpu_all(void) {
+  thread_foreach(thread_update_recent_cpu, NULL);
 }
 
 int
@@ -537,7 +559,7 @@ calculate_new_priority_mlfqs(fixed_point_t rcpu, int nice)
     fixed_point_t divFour = fix_div(rcpu, fix_int(4));
     fixed_point_t subPartOne = fix_sub(fix_int(PRI_MAX), divFour);
     fixed_point_t subPartTwo = fix_sub(subPartOne, fix_int(nice * 2));
-    int newPriority = fix_round(subPartTwo);
+    int newPriority = fix_trunc(subPartTwo);
     if (newPriority < PRI_MIN) {
         newPriority = PRI_MIN;
     }
