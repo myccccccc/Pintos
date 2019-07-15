@@ -579,6 +579,11 @@ allocate_tid (void)
   return tid;
 }
 
+/* if ticks_sellp runs out, unblock the thread, else ticks_sleep minus one*/
+void wakeup_sleeping_thread (struct thread *t, void *aux UNUSED) {
+
+}
+
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
