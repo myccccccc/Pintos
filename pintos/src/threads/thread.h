@@ -91,9 +91,26 @@ struct thread
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
     struct list_elem allelem;           /* List element for all threads list. */
+    int base_priority;
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
+
+    /* Shared between thread.c and timer.c. */
+    struct list_elem s_elem;              /* List element for sleeping_list. */
+
+    /* Record at which tick the thread should wake up, initialized to be zero */
+    int64_t ticks_wakeup;
+
+    /* list of locks that the thread is currently holding */
+    struct list locks_holding;
+
+    /* the lock that the thread is currently waiting for */
+    struct lock *lock_waiting;
+
+    /* Shared between thread.c and synch.c. */
+    struct list_elem loc_elem;              /* List element for threads_waiting. */
+
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
@@ -142,5 +159,26 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
+
+/* if ticks_sleep runs out, unblock the thread, else ticks_sleep minus one */
+void wakeup_sleeping_thread (int64_t ticks);
+
+/* priority compare list_less_func. */
+bool thread_cmp_priority (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
+
+/* put sleeping thread on the sleeping_list */
+void adding_thread_sleeping_list(struct thread *t);
+
+/* ticks_wakeup compare list_less_func. */
+bool wakeup_cmp_priority (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
+
+/* a donate priority to b. it is recursive*/
+void priority_donation(struct thread *a, struct thread *b);
+
+/* get the mix priority among all locks t is holding, or base_priority if t is not holding any locks */
+int get_priority_among_locks_holding(struct thread *t);
+
+/* thread t priority just decreases, he may be now donating other thread, this function will fix this, it is resursive*/
+void thread_priority_resume(struct thread *t);
 
 #endif /* threads/thread.h */
