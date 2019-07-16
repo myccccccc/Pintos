@@ -3,7 +3,7 @@ Final Report for Project 1: Threads
 
 Changes (from design doc):
 
-Task 1:
+Task 1 (Jingqi = I):
 Due to this is the first task, we don’t change anything from design doc. However, I still would like to reiterate the process with more details to make sure that I fully understand the rationale of multi-thread design in alarm.
 
 From project spec on Task 1, it mentions that we need to re-implement the function timer_sleep() under timer.c to make the alarm execute without “busy waiting”. However, the ticks, which works like clock, would help us to record timestamp info. 
@@ -21,7 +21,6 @@ However, how could we call the wakeup_sleeping_thread() function to wake up the 
 Finally, we need to do some miscellaneous work. We need to declare and initialize the spleeping_list at the head of thread.c. 
 
 I think my teammates are doing the project really well and they spend a lot of time to develop and polish the code. I do the report part on task 1. Yinchun does the design doc of task 1 and task 2, and implementation of task 1 and task 2. Jiasheng does the design doc of task 2 and additional questions, and implementation of task 2. Jingqi does the design doc of task 3 and additional questions, and implementation of task 3
-
 
 
 Task 2:
@@ -54,7 +53,8 @@ to the design doc – it was just something not mentioned there.]
 
 ------------------------------------------------
 
-Personal contributions:
+Personal contributions (additional notes):
+
 
 Jiasheng Qin:
 I created a version of task 2 conforming to the original design doc implementation. However, it encountered a 
