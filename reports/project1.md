@@ -235,7 +235,6 @@ Personal contributions (additional notes):
   
 
 Jiasheng Qin:
-<<<<<<< HEAD
 I created a version of task 2 conforming to the original design doc implementation. However, it encountered a 
 variety of synchronization issues, at which point we decided to switch to another implementation. After the 
 switch, I created and tested the entirety of the current implementation of task 3 (the MLFQS-related functions 
@@ -245,17 +244,9 @@ our workload was fairly effective, and we managed to finish the code for this pr
 
 Jingqi Wang:
 I am responsible for the original design document of task 3 with Yingchun Ma. Afterwards, I implemented the entire first version of task 3 and made several modifications to the original design, like using different rule to update priority. However, there are some bugs among the first version of code which are difficult to find. So the final implementation are from Jiasheng Qin. Besides, I also helped to solve problems encountered by other teammates.
-=======
 
-I created a version of task 2 conforming to the original design doc implementation. However, it encountered a
+Yingchun Ma:
+Designed the original doc of task 3 with Jingqi Wang and task 1. Created the final version of task 1 and task 2 and passed all the tests.
 
-variety of synchronization issues, at which point we decided to switch to another implementation. After the
-
-switch, I created and tested the entirety of the current implementation of task 3 (the MLFQS-related functions
-
-inside thread.c and handling the variables inside thread.h). Potential improvements include better communication
-
-between group members regarding bugs that popped up and also discrepancies between implementations. Scheduling
-
-our workload was fairly effective, and we managed to finish the code for this project a day early.
->>>>>>> e293ac2e9c91783e8b545d0b5f269ebee30d8af3
+Zewei Ding:
+Completed task 1 report.
