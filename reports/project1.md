@@ -3,7 +3,7 @@ Final Report for Project 1: Threads
 
 Changes (from design doc):
 
-Task 1 (Jingqi = I):
+Task 1 (from Dean's perspective):
 Due to this is the first task, we don’t change anything from design doc. However, I still would like to reiterate the process with more details to make sure that I fully understand the rationale of multi-thread design in alarm.
 
 From project spec on Task 1, it mentions that we need to re-implement the function timer_sleep() under timer.c to make the alarm execute without “busy waiting”. However, the ticks, which works like clock, would help us to record timestamp info. 
