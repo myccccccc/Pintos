@@ -176,7 +176,6 @@ timer_print_stats (void)
 static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
-  thread_foreach (wakeup_sleeping_thread, NULL);
   ticks++;
   wakeup_sleeping_thread(timer_ticks());
   thread_tick ();

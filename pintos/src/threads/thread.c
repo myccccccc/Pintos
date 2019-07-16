@@ -163,18 +163,22 @@ thread_tick (void)
 #ifdef USERPROG
   else if (t->pagedir != NULL) {
     user_ticks++;
+    t->recent_cpu = fix_add(t->recent_cpu, fix_int(1));
   }
 #endif
   else {
     kernel_ticks++;
+    if (timer_ticks() % TIMER_FREQ != 0) {
+        t->recent_cpu = fix_add(t->recent_cpu, fix_int(1));
+    }
   }
-  if (thread_current() != idle_thread && thread_mlfqs)
-  {
-    t->recent_cpu = fix_add(t->recent_cpu, fix_int(1));
-  }
-  if (timer_ticks() % TIMER_FREQ == 0 && thread_mlfqs) {
+
+
+
+  if (timer_ticks() % TIMER_FREQ == 0) {
     thread_update_load_avg();
     thread_update_recent_cpu_all();
+    //thread_update_load_avg();
   }
 
   if (timer_ticks() % 4 == 0 && thread_mlfqs) {
@@ -435,10 +439,7 @@ count_number_ready_or_running (struct thread *t, void* aux) {
 
 void
 update_priority_mlfqs(struct thread* t, void* aux UNUSED) {
-  if (t != idle_thread)
-  {
-    t->priority = calculate_new_priority_mlfqs(t->recent_cpu, t->nice);
-  }
+  t->priority = calculate_new_priority_mlfqs(t->recent_cpu, t->nice);
 }
 
 void
@@ -491,18 +492,34 @@ thread_get_load_avg (void)
 void
 thread_update_load_avg (void)
 {
-   int num_ready_threads = list_size(&ready_list);
-   if (thread_current() != idle_thread)
-   {
-     num_ready_threads++;
-   }
+   enum intr_level old_level;
+   old_level = intr_disable();
+
+   int num_ready_threads = 0;
+   //Counts all threads that are either already running or ready
+   //int num_ready_threads = list_size(&ready_list) + 1;
+
+   thread_foreach (count_number_ready_or_running, &num_ready_threads);
+
+   //printf("Number of ready threads is %d\n", num_ready_threads);
+
    fixed_point_t num_ready_threads_fixed = fix_int(num_ready_threads);
+
    fixed_point_t five_six = fix_frac(59,60);
    fixed_point_t one_six = fix_frac(1,60);
+
    fixed_point_t first_product = fix_mul(five_six, load_avg);
    fixed_point_t second_product = fix_mul(one_six, num_ready_threads_fixed);
+
    fixed_point_t sum = fix_add(first_product, second_product);
+
    load_avg = sum;
+
+   //int new_load_avg = thread_get_load_avg();
+   //printf("New load average is %d.%02d\n", new_load_avg/100, new_load_avg%100);
+
+   intr_set_level(old_level);
+
 }
 
 /* Returns 100 times the current thread's recent_cpu value. */
@@ -515,18 +532,23 @@ thread_get_recent_cpu (void)
 void
 thread_update_recent_cpu(struct thread* thr, void* aux UNUSED)
 {
-  if (thr == idle_thread)
-  {
-    return;
-  }
+  enum intr_level old_level;
+  old_level = intr_disable();
+
   fixed_point_t twoLA = fix_mul(fix_int(2), load_avg);
   fixed_point_t twoLAplus = fix_add(twoLA, fix_int(1));
+
   fixed_point_t LAFrac = fix_div(twoLA, twoLAplus);
+
   fixed_point_t recent_cpu = thr->recent_cpu;
   fixed_point_t nice_fixed = fix_int(thr->nice);
+
   fixed_point_t product = fix_mul(LAFrac, recent_cpu);
   fixed_point_t sum = fix_add(product, nice_fixed);
+
   thr->recent_cpu = sum;
+
+  intr_set_level(old_level);
 }
 
 void
@@ -772,11 +794,6 @@ allocate_tid (void)
   lock_release (&tid_lock);
 
   return tid;
-}
-
-/* if ticks_sellp runs out, unblock the thread, else ticks_sleep minus one*/
-void wakeup_sleeping_thread (struct thread *t, void *aux UNUSED) {
-
 }
 
 /* Offset of `stack' member within `struct thread'.

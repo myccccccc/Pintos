@@ -91,7 +91,6 @@ struct thread
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
     struct list_elem allelem;           /* List element for all threads list. */
-
     int base_priority;
 
     int nice;                           /* Current nice value */
@@ -138,8 +137,6 @@ void thread_start (void);
 
 void thread_tick (void);
 void thread_print_stats (void);
-// if ticks_sleeping runs out, unblock the thread, else ticks_sleep minus one
-void wakeup_sleeping_thread (struct thread *t, void *aux UNUSED);
 
 typedef void thread_func (void *aux);
 tid_t thread_create (const char *name, int priority, thread_func *, void *);
