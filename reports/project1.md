@@ -63,3 +63,6 @@ switch, I created and tested the entirety of the current implementation of task 
 inside thread.c and handling the variables inside thread.h). Potential improvements include better communication 
 between group members regarding bugs that popped up and also discrepancies between implementations. Scheduling 
 our workload was fairly effective, and we managed to finish the code for this project a day early.
+
+Jingqi Wang:
+I am responsible for the original design document of task 3 with Yingchun Ma. Afterwards, I implemented the entire first version of task 3 and made several modifications to the original design, like using different rule to update priority. However, there are some bugs among the first version of code which are difficult to find. So the final implementation are from Jiasheng Qin. Besides, I also helped to solve problems encountered by other teammates.
