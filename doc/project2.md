@@ -8,6 +8,7 @@ Design Document for Project 2: User Programs
 * Yingchun Ma <mayingchun@berkeley.edu>
 * Zewei Ding <ding.zew@berkeley.edu>
 
+Replace this text with your design document.
 
 ## Task 1:
 
@@ -296,8 +297,6 @@ The global lock`struct lock fsys_lock`can be added in`syscall.c`
 
 Our implementation of these syscalls will simply call the appropriate functions in the file system library, like `filesys.c`and `file.c`.  Corresponding `struct file *file` can be found by `fd` from file descriptor tables.
 
-
-Each process will have its own **process file descriptor table** attribute inside `struc
 
 
 --------------------------------------
