@@ -6,11 +6,81 @@ Design Document for Project 2: User Programs
 * Jiasheng Qin <jqin0713@berkeley.edu>
 * FirstName LastName <email@domain.example>
 * FirstName LastName <email@domain.example>
-* FirstName LastName <email@domain.example>
+* Zewei Ding <ding.zew@berkeley.edu>
 
 Replace this text with your design document.
 
 Task 1:
+
+**Data Structure**
+
+`char** argv[]`
+`int argc`
+We need an array `argv[]` to record the result of parsed input. Also, we need a counter `argc` to record the size of the array.
+
+**Algorithm**
+
+Once we get the user input, we need to iterate the input. 
+
+First, we need to deduplicate heading, tailing and continuous space.
+
+```C
+// record the start of the input string
+char* slow;
+int j = 0;
+char* input;
+
+/* 
+   if the current char is space 
+    1. it is the head of the input string
+    2. it is no the head of the string and the prev char is also space
+   we don't need to copy current char
+*/
+for (i = 0; i < len; i++) {
+  if (*(input + i) == ' ' && (i == 0 || *(input + i - 1) == ' ')) {
+     continue;
+  } 
+  *(slow + j) = *(input + i);
+  j++;
+}
+
+// check the tail of the input is space or not. If the tail of the input is space, remove it. 
+```
+
+Second, we need to count the number of command, and save each command on `argv[]`
+
+```C
+/*
+  iterate the input and find each word. Then copy the word to the argv[]
+*/
+
+int slow;
+int j = 0;
+
+for (int i = 0; i < len; i++) {
+    // Find the starting point of each word
+    if (*(input + i) != ' ' && (i == 0 || *(input + i - 1) == ' ')) {
+        slow = i;
+    }
+    // Find the ending point of each word and copy to argv[]
+    if (*(input + i) != ' ' && (i == len - 1 || *(input + i + 1) == ' ')) {
+        
+        strlcpy(argv[j], input[slow], i - slow + 1);
+    }
+}
+```
+
+Third, if the user stack is not enough for the user program, we need to stop execute the user program and alert user about the info. We can get stack info from `pagedir_create()`
+
+Additionally, we could set a size for user input. if the `argc` is larger than certain number, we just return.
+
+**Synchronization**
+
+We need to folk a child process to handle the user input, then pass the parameters to `process_execute()`. 
+
+**Rationale**
+
+User only need to input the name of executable to, which is `argv[0]`, to make them run. And user also needs to be able to input several command with flag to run shell command-line. Once succeed, `process_execute()` will call `thread_create()` with `start_process()` to initiate a new process. The input type of user is STDIN. Therefore, we need to parse the input and allocate the information.
 
 ----------------------------------------------
 
