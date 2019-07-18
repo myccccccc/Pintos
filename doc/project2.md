@@ -8,17 +8,16 @@ Design Document for Project 2: User Programs
 * Yingchun Ma <mayingchun@berkeley.edu>
 * Zewei Ding <ding.zew@berkeley.edu>
 
-Replace this text with your design document.
 
-Task 1:
+## Task 1:
 
-**Data Structure**
+### Data Structure
 
 `char** argv[]`
 `int argc`
 We need an array `argv[]` to record the result of parsed input. Also, we need a counter `argc` to record the size of the array.
 
-**Algorithm**
+### Algorithm
 
 Once we get the user input, we need to iterate the input. 
 
@@ -74,17 +73,17 @@ Third, if the user stack is not enough for the user program, we need to stop exe
 
 Additionally, we could set a size for user input. if the `argc` is larger than certain number, we just return.
 
-**Synchronization**
+### Synchronization
 
 We need to folk a child process to handle the user input, then pass the parameters to `process_execute()`. 
 
-**Rationale**
+### Rationale
 
 User only need to input the name of executable to, which is `argv[0]`, to make them run. And user also needs to be able to input several command with flag to run shell command-line. Once succeed, `process_execute()` will call `thread_create()` with `start_process()` to initiate a new process. The input type of user is STDIN. Therefore, we need to parse the input and allocate the information.
 
 ----------------------------------------------
 
-Task 2:
+## Task 2:
 
 ### Data structures
 Two instance variables will be added to the thread struct inside thread.h. 
@@ -171,7 +170,38 @@ I chose the current method for its relative simplicitly, and the fact that there
 
 --------------------------------------
 
-Task 3:
+## Task 3:
+
+### Data Structures and Functions
+
+When a process successful call to `open` system call, we need to initialize and maintain a map from file descriptor numbers to corresponding `struct file* files` this table is process file descriptor table. File descriptor numbers is unique when open returns, it ranges from 2 to 128. The file descriptor entry is removed on a call to `close` system call in that process's file descriptor table.
+
+When we reach `128`, the file descriptors per process limit, we should shift all file desciptor numbers down accordingly if there are other file desciptor has been closed.
+
+We choose to use Pintos linked list which will holds file descriptor numbers and the correspondent `struct file* files` as our process's file descriptor table.
+
+The kernel maintains a open file table as a table to map `struct file *files` to their corresponding `struct * inodes`. It also need to keep track of how many process is currently opend that file. When there is no process using that file kernal need to delete its's open table entry.
+
+```
+/* process file table linked list */
+struct fd_file_list_elem
+  {
+    int fd;
+    struct file * file;
+    struct list_elem elem;
+};
+```
+The kernel open table linked list and linked list elems will be similar but mapping `struct file* file` to `inode *` inside `userprog/syscall.c`.
+```
+/* kernel open table linked list */
+struct file_inode_list_elem
+  {
+    struct file * file;
+    struc inode * ind;
+    int num_proc;
+    struct list_elem elem;
+};
+```
 
 ### Algorithms
 ```
