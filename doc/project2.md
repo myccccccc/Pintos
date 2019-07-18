@@ -5,7 +5,7 @@ Design Document for Project 2: User Programs
 
 * Jiasheng Qin <jqin0713@berkeley.edu>
 * Jingqi Wang <jackiewang@berkeley.edu>
-* FirstName LastName <email@domain.example>
+* Yingchun Ma <mayingchun@berkeley.edu>
 * Zewei Ding <ding.zew@berkeley.edu>
 
 Replace this text with your design document.
