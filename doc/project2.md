@@ -105,7 +105,7 @@ Task 3:
 
 --------------------------------------
 
-Additional Questions:
+**Additional Questions:**
 
 **1)** One such test is sc-bad-sp.c. The offending line of code (line 18) is:
 
