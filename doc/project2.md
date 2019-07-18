@@ -8,7 +8,6 @@ Design Document for Project 2: User Programs
 * Yingchun Ma <mayingchun@berkeley.edu>
 * Zewei Ding <ding.zew@berkeley.edu>
 
-Replace this text with your design document.
 
 ## Task 1:
 
