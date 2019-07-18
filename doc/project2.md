@@ -106,3 +106,81 @@ Task 3:
 --------------------------------------
 
 Additional Questions:
+
+**1)** One such test is sc-bad-sp.c. The offending line of code (line 18) is:
+
+`asm volatile ("movl $.-(64*1024*1024), %esp; int $0x30");`
+
+This code attempts to make a syscall with `esp` at an offset of -64*1024*1024 (bytes). However, notice that this is located below the code segment of the stack (specifically 64MB below) and thus the syscall should fail.
+ 
+
+**2)** One such test is sc-boundary-2.c. The offending line of code (line 20) is:
+
+`asm volatile ("movl %0, %%esp; int $0x30" : : "g" (p));`
+
+The source of the error is what p is defined as (on line 15): 
+
+`int *p = (int *) ((char *) get_boundary_area () - 7);`
+
+Since we want to obtain a chunk of 8 bytes (used for the arguments of the syscall), the last byte will dangle over into a neighboring page (the first 7 bytes will still be valid), and is thus located in invalid memory.
+ 
+
+**3)** One requirement of the project is that in the wait syscall, a parent process can only call wait on a direct child process. Although `wait-bad-pid` tests that an invalid pid cannot be used to wait on (it chooses a fixed pid that is guaranteed to not belong to any process), we also need to make sure that even a valid pid, corresponding to an existing process, also cannot be waited on if that existing process is not a child process. To make such a test, we could have something like: 
+
+-- Process A calls exec to spawn process B
+
+-- Process B calls exec to spawn process C
+
+-- Process A, B, and C have pid values Pa, Pb, and Pc, respectively
+
+In such a scenario, if process A calls `wait(Pc)`, the wait call should return -1 upon realizing that process C is not one of A’s direct children.
+
+
+** GDB Questions **
+
+**1)** The thread executing the current function is the main thread (name is “main”). Its address on the stack appears to be 0xc000ee0c
+
+There is only one other thread, the idle thread (name is “idle”). Copying the idle thread’s struct gives:
+
+`{tid = 2, status = THREAD_BLOCKED, name = "idle", '\000' <repeats 11 times>, stack = 0xc0104f34 "", priority = 0, allelem = {prev = 0xc000e020, next = 0xc0034b58 <all_list+8>}, elem = {prev = 0xc0034b60 <ready_list>, next = 0xc0034b68 <ready_list+8>}, pagedir = 0x0, magic = 3446325067}`
+
+**2)** Copy pasting:
+
+`#0  process_execute (file_name=file_name@entry=0xc0007d50 "args-none") at ../../userprog/process.c:32`
+
+`#1  0xc002025e in run_task (argv=0xc0034a0c <argv+12>) at ../../threads/init.c:288`
+
+`#2  0xc00208e4 in run_actions (argv=0xc0034a0c <argv+12>) at ../../threads/init.c:340`
+
+`#3  main () at ../../threads/init.c:133`
+
+The corresponding lines of C code are (first three are all in the init.c file):
+
+#3’s line number has (inside the main method): `run_actions (argv);`
+
+#2’s line number has (inside the run_action method): `a->function (argv);`
+
+#1’s line number has (inside the run_task method): `process_wait (process_execute (task));`
+
+#0’s line number corresponds to the beginning of the `process_execute` method inside the process.c file.
+
+**3)** The name of the thread is "args-none\000\000\000\000\000\000". Its address on the stack is 0xc010afd4. Other threads present include the main thread and the idle thread:
+
+Main thread: `{tid = 1, status = THREAD_BLOCKED, name = "main", '\000' <repeats 11 times>, stack = 0xc000eebc "\001", priority = 31, allelem = {prev = 0xc0034b50 <all_list>, next = 0xc0104020}, elem = {prev = 0xc0036554 <temporary+4>, next = 0xc003655c <temporary+12>}, pagedir = 0x0, magic = 3446325067}`
+
+Idle thread: `{tid = 2, status = THREAD_BLOCKED, name = "idle", '\000' <repeats 11 times>, stack = 0xc0104f34 "", priority = 0, allelem = {prev = 0xc000e020, next = 0xc010a020}, elem = {prev = 0xc0034b60 <ready_list>, next = 0xc0034b68 <ready_list+8>}, pagedir = 0x0, magic = 3446325067}`
+
+**4)** The thread is created at line 424 (based on the skeleton code) of thread.c, located in the `kernel_thread` method. The line is:
+
+`function(aux);`
+
+The function passed in to `kernel_thread` was the `start_process` method, hence the line above creates the thread that runs `start_process`.
+
+**5)** The faulting address is 0x0804870c
+
+**6)** Copy paste:
+
+`_start (argc=<error reading variable: can't compute CFA for this frame>, argv=<error reading variable: can't compute CFA for this frame>) at ../../lib/user/entry.c:9`
+
+**7)** The issue is that it cannot compute the canonical frame address (CFA) for the frame associated with the call to `_start` inside entry.c. Thus, although it knows the variables argc and argv exist, it does not know how to compute their addresses, hence resulting in a page fault.
+
