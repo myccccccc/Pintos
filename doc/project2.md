@@ -4,7 +4,7 @@ Design Document for Project 2: User Programs
 ## Group Members
 
 * Jiasheng Qin <jqin0713@berkeley.edu>
-* FirstName LastName <email@domain.example>
+* Jingqi Wang <jackiewang@berkeley.edu>
 * FirstName LastName <email@domain.example>
 * FirstName LastName <email@domain.example>
 
@@ -16,7 +16,7 @@ Task 1:
 
 Task 2:
 
-**Data structures:**
+### Data structures
 Two instance variables will be added to the thread struct inside thread.h. 
 
 The first is a list of threads, which will serve two purposes. Initially, when a process (and thus its corresponding thread) is created (successfully) via an exec() syscall, the current thread running (the “calling process”) will add that child process to its list. This will later be used for wait in order to determine the validity of waiting on a particular child.
@@ -35,7 +35,7 @@ There will also be a new global variable inside thread.h, in the form of a (user
 
 ------------------------------------------
 
-**Algorithms:**
+### Algorithms
 
 The syscalls that need to be implemented are described as followed:
 
@@ -75,7 +75,7 @@ C)	Lastly, to check that we did not intrude into the kernel address space, we ca
 
 ---------------------------------------------
 
-**Synchronization:**
+### Synchronization
 
 The exit syscall does not need any additional synchronization features.
 
@@ -91,7 +91,7 @@ Synchronization for memory security will disable interrupts before address check
 
 -----------------------------------
 
-**Rationale:**
+### Rationale
 
 I originally considered a signaling system between the parent and child, in which I had the child manually remove itself from the parent’s `child_threads` list upon exiting – the parent would check for the presence of the child in its list instead of looking at a global map. In addition, the child would then wait for the parent to send acknowledgement that it had read the child’s exit status, which was another instance variable was supposed to be inside the thread struct (as of the current implementation, it has been moved to be the “value” for each key-value pair inside the global map). Only after the child had received acknowledgement would it free up all of its memory.
 
@@ -103,9 +103,106 @@ I chose the current method for its relative simplicitly, and the fact that there
 
 Task 3:
 
+### Algorithms
+```
+bool create (const char *file, unsigned initial_size) 
+{
+    filesys_create (const char *name, off_t initial_size)   
+    /* Creates a file named NAME with the given INITIAL_SIZE.
+    Returns true if successful, false otherwise.
+    Fails if a file named NAME already exists, or if internal memory allocation fails. */
+}
+
+```
+```
+bool remove (const char *file)
+{
+    filesys_remove (const char *name)
+    /* Deletes the file named NAME.
+    Returns true if successful, false on failure.
+    Fails if no file named NAME exists, or if an internal memory allocation fails. */
+} 
+```
+```
+int open (const char *file)
+{
+   filesys_open (const char *name, off_t initial_size)
+   /* Opens the file with the given NAME.
+    Returns the new file if successful or a null pointer otherwise.Fails if no file named NAME exists, or if an internal memory allocation fails. */
+   /* An unique file descriptor number will be attached to the returned struct file *file. */
+}
+```
+```
+int filesize (int fd)
+{
+    file_length (struct file *file)
+    /* Returns the size of FILE in bytes. */
+    /* Corresponding struct file *file can be found by fd from file descriptor table. */
+}
+
+```
+```
+int read (int fd, void *buffer, unsigned size)
+{
+    file_read (struct file *file, void *buffer, off_t size)
+    /* Reads SIZE bytes from FILE into BUFFER, starting at the file's current position.
+    Returns the number of bytes actually read, which may be less than SIZE if end of file is reached.
+    Advances FILE's position by the number of bytes read. */
+    /* Corresponding struct file *file can be found by fd from file descriptor table. */
+}
+```
+```
+int write (int fd, const void *buffer, unsigned size)
+{
+    file_write (struct file *file, void *buffer, off_t size)
+    /* Writes SIZE bytes from BUFFER into FILE, starting at the file's current position. 
+    Returns the number of bytes actually written, which may be less than SIZE if end of file is reached.
+    Advances FILE's position by the number of bytes read. */
+    /* Corresponding struct file *file can be found by fd from file descriptor table. */
+}
+```
+```
+void seek (int fd, unsigned position)
+{
+    file_seek (struct file *file, off_t new_pos)
+    /* Sets the current position in FILE to NEW_POS bytes from the start of the file. */
+    /* Corresponding struct file *file can be found by fd from file descriptor table. */
+}
+```
+```
+unsigned tell (int fd)
+{
+    file_tell (struct file *file)
+    /* Returns the current position in FILE as a byte offset from the start of the file. */
+    /* Corresponding struct file *file can be found by fd from file descriptor table. */
+}
+```
+```
+void close (int fd)
+{
+    file_close (struct file *file)
+    /* Closes FILE. */
+    /* Corresponding struct file *file can be found by fd from file descriptor table. */
+}
+```
+
+### Synchronization
+
+For this project, we can simply use a global lock on filesystem operations , which is mainly in `file.c` and `filesys.c`,  to ensure thread safety.
+
+The global lock`struct lock fsys_lock`can be added in`syscall.c`
+
+### Rationale
+
+Our implementation of these syscalls will simply call the appropriate functions in the file system library, like `filesys.c`and `file.c`.  Corresponding `struct file *file` can be found by `fd` from file descriptor tables.
+
+
+Each process will have its own **process file descriptor table** attribute inside `struc
+
+
 --------------------------------------
 
-**Additional Questions:**
+## Additional Questions
 
 **1)** One such test is sc-bad-sp.c. The offending line of code (line 18) is:
 
