@@ -136,7 +136,7 @@ Since we want to obtain a chunk of 8 bytes (used for the arguments of the syscal
 In such a scenario, if process A calls `wait(Pc)`, the wait call should return -1 upon realizing that process C is not one of A’s direct children.
 
 
-** GDB Questions **
+**GDB Questions**
 
 **1)** The thread executing the current function is the main thread (name is “main”). Its address on the stack appears to be 0xc000ee0c
 
