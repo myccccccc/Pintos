@@ -1,12 +1,10 @@
 #ifndef THREADS_THREAD_H
 #define THREADS_THREAD_H
-
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
 #include "threads/synch.h"
 #include "threads/fixed-point.h"
-
 /* States in a thread's life cycle. */
 enum thread_status
   {
@@ -25,6 +23,25 @@ typedef int tid_t;
 #define PRI_MIN 0                       /* Lowest priority. */
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
+
+#ifdef USERPROG
+struct wait_status *get_tid_wait_status(tid_t tid);
+void init_wait_status(struct thread *t);
+int get_all_list_size(void);
+struct wait_status
+{
+  struct list_elem elem; /* ‘children’ list element. */
+  struct lock lock; /* Protects me_alive and parent_alive. */
+  int me_alive; //init in 
+  int parent_alive; //init in init_thread()
+  tid_t tid; /* Child thread id. */
+  int exit_code; /* Child exit code, if dead. */
+  int load_status; /* 0 successfully loaded, -1 fail to load */
+  struct semaphore wait_load; /* parent will wait for child's wait_load to wait for child proc to finish loading */
+  struct semaphore dead;
+};
+#endif
+
 
 /* A kernel thread or user process.
 
@@ -91,34 +108,15 @@ struct thread
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
     struct list_elem allelem;           /* List element for all threads list. */
-    int base_priority;
-
-    int nice;                           /* Current nice value */
-
-    fixed_point_t recent_cpu;                     /* Current recent CPU value */
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
-    /* Shared between thread.c and timer.c. */
-    struct list_elem s_elem;              /* List element for sleeping_list. */
-
-    /* Record at which tick the thread should wake up, initialized to be zero */
-    int64_t ticks_wakeup;
-
-    /* list of locks that the thread is currently holding */
-    struct list locks_holding;
-
-    /* the lock that the thread is currently waiting for */
-    struct lock *lock_waiting;
-
-    /* Shared between thread.c and synch.c. */
-    struct list_elem loc_elem;              /* List element for threads_waiting. */
-
-
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
+    struct wait_status *wait_status; /* This process’s completion state. */
+    struct list children; /* Completion status of children. */
 #endif
 
     /* Owned by thread.c. */
@@ -129,8 +127,6 @@ struct thread
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */
 extern bool thread_mlfqs;
-
-fixed_point_t load_avg;                       /* Current load average */
 
 void thread_init (void);
 void thread_start (void);
@@ -162,26 +158,5 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
-
-/* if ticks_sleep runs out, unblock the thread, else ticks_sleep minus one */
-void wakeup_sleeping_thread (int64_t ticks);
-
-/* priority compare list_less_func. */
-bool thread_cmp_priority (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
-
-/* put sleeping thread on the sleeping_list */
-void adding_thread_sleeping_list(struct thread *t);
-
-/* ticks_wakeup compare list_less_func. */
-bool wakeup_cmp_priority (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
-
-/* a donate priority to b. it is recursive*/
-void priority_donation(struct thread *a, struct thread *b);
-
-/* get the mix priority among all locks t is holding, or base_priority if t is not holding any locks */
-int get_priority_among_locks_holding(struct thread *t);
-
-/* thread t priority just decreases, he may be now donating other thread, this function will fix this, it is resursive*/
-void thread_priority_resume(struct thread *t);
 
 #endif /* threads/thread.h */

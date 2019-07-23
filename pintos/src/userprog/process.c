@@ -18,10 +18,13 @@
 #include "threads/synch.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "threads/malloc.h"
+#include "list.h"
 
 static struct semaphore temporary;
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
+static void *arguments_passing(char **argv, int argc, void *esp);
 
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
@@ -30,19 +33,32 @@ static bool load (const char *cmdline, void (**eip) (void), void **esp);
 tid_t
 process_execute (const char *file_name)
 {
-  char *fn_copy;
+  char *fn_copy, *fn_copy2, *save_ptr, *s;
   tid_t tid;
-
-  sema_init (&temporary, 0);
+  struct wait_status *tid_wait_status;
+  
+  if (get_all_list_size() == 2) //main is first executing a proc
+  {
+    sema_init (&temporary, 0);
+  }
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
   fn_copy = palloc_get_page (0);
   if (fn_copy == NULL)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
+  fn_copy2 = palloc_get_page (0);
+  if (fn_copy2 == NULL)
+    return TID_ERROR;
+  strlcpy (fn_copy2, file_name, PGSIZE);
 
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
+  s = strtok_r (fn_copy2, " ", &save_ptr);
+  tid = thread_create (s, PRI_DEFAULT, start_process, fn_copy);
+  tid_wait_status = get_tid_wait_status(tid);
+  sema_down(&tid_wait_status->wait_load);
+
+  palloc_free_page (fn_copy2);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy);
   return tid;
@@ -56,19 +72,39 @@ start_process (void *file_name_)
   char *file_name = file_name_;
   struct intr_frame if_;
   bool success;
+  int argc;
+  char *argv[128]; //at most 128 arguments
+  char *token, *save_ptr;
 
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-  success = load (file_name, &if_.eip, &if_.esp);
 
+  argc = 0;
+  for (token = strtok_r (file_name, " ", &save_ptr); token != NULL; token = strtok_r (NULL, " ", &save_ptr))
+  {
+    argv[argc] = token;
+    argc++;
+  }
+
+  success = load (argv[0], &if_.eip, &if_.esp);
+  if (success)
+  {
+    thread_current()->wait_status->load_status = 0;
+    if_.esp = arguments_passing(argv, argc, if_.esp);
+    sema_up(&thread_current()->wait_status->wait_load);
+  }
   /* If load failed, quit. */
   palloc_free_page (file_name);
   if (!success)
+  {
+    thread_current()->wait_status->load_status = -1;
+    sema_up(&thread_current()->wait_status->wait_load);
     thread_exit ();
-
+  }
+    
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
      threads/intr-stubs.S).  Because intr_exit takes all of its
@@ -118,7 +154,48 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
-  sema_up (&temporary);
+  if (get_all_list_size() <= 2) //only main and idle left
+  {
+
+  }
+  else
+  {
+    struct wait_status *ws;
+    lock_acquire(&cur->wait_status->lock);
+    cur->wait_status->me_alive = 0;
+    if (cur->wait_status->parent_alive == 0)
+    {
+      lock_release(&cur->wait_status->lock);
+      free(cur->wait_status);
+    }
+    else
+    {
+      sema_up(&cur->wait_status->dead);
+      lock_release(&cur->wait_status->lock);
+    }
+    while(!list_empty(&cur->children))
+    {
+      ws=list_entry(list_pop_front(&cur->children), struct wait_status, elem);
+      lock_acquire(&ws->lock);
+      ws->parent_alive = 0;
+      if (ws->me_alive == 0)
+      {
+        lock_release(&ws->lock);
+        free(ws);
+      }
+      else
+      {
+        lock_release(&ws->lock);
+      }
+      
+    }
+    if (get_all_list_size() == 3)//the last process is exiting
+    {
+      sema_up (&temporary);
+    }
+  }
+  
+  
 }
 
 /* Sets up the CPU for running user code in the current
@@ -468,3 +545,44 @@ install_page (void *upage, void *kpage, bool writable)
   return (pagedir_get_page (t->pagedir, upage) == NULL
           && pagedir_set_page (t->pagedir, upage, kpage, writable));
 }
+
+static void *arguments_passing(char **argv, int argc, void *esp)
+{
+  char *argv_in_stack[128];
+  char **char_star_esp;
+  char ***char_star_star_esp;
+  char *char_esp = (char *) esp;
+  int *int_esp;
+  void **ret_esp;
+  int i;
+  for (i = argc - 1; i >= 0; i--)
+  {
+    char_esp -= strlen(argv[i]) + 1;
+    memcpy(char_esp, argv[i], strlen(argv[i]) + 1);
+    argv_in_stack[i] = char_esp;
+  }
+  while ((int) char_esp % 4 != 0)
+  {
+    char_esp--;
+  }
+  char_star_esp = (char **) char_esp;
+  char_star_esp--;
+  *char_star_esp = 0;
+  for (i = argc - 1; i >= 0; i--)
+  {
+    char_star_esp--;
+    *char_star_esp = argv_in_stack[i];
+  }
+  char_star_star_esp = (char ***)char_star_esp;
+  char_star_star_esp--;
+  *char_star_star_esp = char_star_esp;
+  int_esp = (int *)char_star_star_esp;
+  int_esp--;
+  *int_esp = argc;
+  ret_esp = (void **)int_esp;
+  ret_esp--;
+  *ret_esp = 0;
+  //hex_dump(0, ret_esp, (int) PHYS_BASE - (int) ret_esp, true);
+  return ret_esp;
+}
+
