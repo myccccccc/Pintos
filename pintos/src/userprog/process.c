@@ -26,6 +26,7 @@ static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 static void *arguments_passing(char **argv, int argc, void *esp);
 
+
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
    before process_execute() returns.  Returns the new process's
@@ -37,15 +38,17 @@ process_execute (const char *file_name)
   tid_t tid;
   struct wait_status *tid_wait_status;
 
-  struct file* f = filesys_open(file_name);
-  if (f != NULL) {
-    file_deny_write(f);
-  }
-  
   if (get_all_list_size() == 2) //main is first executing a proc
   {
     sema_init (&temporary, 0);
   }
+
+  //struct file* f = filesys_open(file_name);
+  //if (f != NULL) {
+    //file_deny_write(f);
+  //}
+
+
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
   fn_copy = palloc_get_page (0);
@@ -63,9 +66,9 @@ process_execute (const char *file_name)
   tid_wait_status = get_tid_wait_status(tid);
   sema_down(&tid_wait_status->wait_load);
 
-  if (f!= NULL) {
-    file_allow_write(f);
-  }
+  //if (f!= NULL) {
+   // file_allow_write(f);
+  //}
 
   palloc_free_page (fn_copy2);
   if (tid == TID_ERROR)
@@ -101,6 +104,12 @@ start_process (void *file_name_)
   success = load (argv[0], &if_.eip, &if_.esp);
   if (success)
   {
+    struct file* f = filesys_open(file_name);
+    if (f != NULL) {
+      create_and_push_back_pfme(f);
+      file_deny_write(f);
+    }
+
     thread_current()->wait_status->load_status = 0;
     if_.esp = arguments_passing(argv, argc, if_.esp);
     sema_up(&thread_current()->wait_status->wait_load);
@@ -150,6 +159,7 @@ process_exit (void)
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   pd = cur->pagedir;
+  //Clean up malloc'ed memory for process file map elements, and also allow writes again
   close_all_fd();
   if (pd != NULL)
     {
@@ -320,7 +330,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
       printf ("load: %s: open failed\n", file_name);
       goto done;
     }
-
+  //file_deny_write(file);
   /* Read and verify executable header. */
   if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
       || memcmp (ehdr.e_ident, "\177ELF\1\1\1", 7)

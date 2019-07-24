@@ -178,6 +178,12 @@ static void proc_exit(int status, struct intr_frame *f)
 static int proc_exec (const char *file)
 {
   int pid = process_execute(file);
+
+  //struct file* opened = filesys_open(file);
+  //if (opened != NULL) {
+    //file_close(opened);
+  //}
+
   if (get_tid_wait_status(pid)->load_status == -1)
   {
     return -1;

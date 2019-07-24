@@ -681,7 +681,7 @@ void remove_pfme_by_fd (int fd) {
             what_to_remove_le = iterator;
             what_to_remove_pfme = pfme;
             //Now allow writes after closing the process
-            //file_allow_write(pfme->file);
+            file_close(pfme->file);
             break;
         }
     }
@@ -711,6 +711,7 @@ void close_all_fd (void) {
     while (!list_empty(&thread_current()->process_file_map)) {
         struct list_elem* popped = list_pop_front(&thread_current()->process_file_map);
         struct process_file_map_elem* popped_pfme = list_entry(popped, struct process_file_map_elem, elem);
+        file_close(popped_pfme->file);
         free(popped_pfme);
     }
 }
