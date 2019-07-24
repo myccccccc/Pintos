@@ -5,6 +5,9 @@
 #include <stdint.h>
 #include "threads/synch.h"
 #include "threads/fixed-point.h"
+#include "filesys/file.h"
+
+
 /* States in a thread's life cycle. */
 enum thread_status
   {
@@ -40,8 +43,19 @@ struct wait_status
   struct semaphore wait_load; /* parent will wait for child's wait_load to wait for child proc to finish loading */
   struct semaphore dead;
 };
-#endif
 
+struct process_file_map_elem* create_pfme (struct file* f); /*Uses the return argument of an open syscall to create a list elem*/
+void push_back_pfme (struct process_file_map_elem* pfme); /*Appends the provided argument to the end of the current thread's process_file_map*/
+void create_and_push_back_pfme(struct file* f); /*Combination of the two methods above executed in sequence*/
+void remove_pfme_by_fd(int fd); //Used by close syscall on a particular fd
+void close_all_fd(void); //Closes all file descriptors on the current process
+
+struct process_file_map_elem {
+    int fd;
+    struct file* file;
+    struct list_elem elem;
+};
+#endif
 
 /* A kernel thread or user process.
 
@@ -117,6 +131,9 @@ struct thread
     uint32_t *pagedir;                  /* Page directory. */
     struct wait_status *wait_status; /* This process’s completion state. */
     struct list children; /* Completion status of children. */
+    struct list process_file_map; /* List of process_file_map_elem that deals with maps file descriptors to file structs */
+    int next_fd; /*Next file descriptor value to use upon successful syscall to open; ranges from 2 to 128, inclusive*/
+    //NOTE: next_fd will only be updated on the first call to a file's open, unless that file has been removed
 #endif
 
     /* Owned by thread.c. */

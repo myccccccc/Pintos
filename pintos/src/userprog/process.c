@@ -36,6 +36,11 @@ process_execute (const char *file_name)
   char *fn_copy, *fn_copy2, *save_ptr, *s;
   tid_t tid;
   struct wait_status *tid_wait_status;
+
+  struct file* f = filesys_open(file_name);
+  if (f != NULL) {
+    file_deny_write(f);
+  }
   
   if (get_all_list_size() == 2) //main is first executing a proc
   {
@@ -57,6 +62,10 @@ process_execute (const char *file_name)
   tid = thread_create (s, PRI_DEFAULT, start_process, fn_copy);
   tid_wait_status = get_tid_wait_status(tid);
   sema_down(&tid_wait_status->wait_load);
+
+  if (f!= NULL) {
+    file_allow_write(f);
+  }
 
   palloc_free_page (fn_copy2);
   if (tid == TID_ERROR)
@@ -141,6 +150,7 @@ process_exit (void)
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   pd = cur->pagedir;
+  close_all_fd();
   if (pd != NULL)
     {
       /* Correct ordering here is crucial.  We must set

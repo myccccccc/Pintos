@@ -473,6 +473,8 @@ init_thread (struct thread *t, const char *name, int priority)
   list_push_back (&all_list, &t->allelem);
   #ifdef USERPROG
   list_init(&t->children);
+  list_init(&t->process_file_map);
+  t->next_fd = 2;
   #endif
   intr_set_level (old_level);
 }
@@ -642,4 +644,75 @@ struct wait_status *get_tid_wait_status(tid_t tid)
   }
   return NULL;
 }
+
+
+struct process_file_map_elem* create_pfme(struct file* f) {
+    int next = thread_current()->next_fd;
+    if (next < 128) {
+        struct process_file_map_elem* pfme = malloc(sizeof(struct process_file_map_elem));
+        if (pfme != NULL) {
+            pfme->fd = next;
+            pfme->file = f;
+            thread_current()->next_fd ++;
+        }
+        return pfme;
+    }
+    return NULL;
+}
+
+void push_back_pfme (struct process_file_map_elem* pfme) {
+    list_push_back(&thread_current()->process_file_map, &pfme->elem);
+}
+
+void create_and_push_back_pfme (struct file* f) {
+    struct process_file_map_elem* pfme = create_pfme(f);
+    if (f != NULL) {
+        push_back_pfme(pfme);
+    }
+}
+
+void remove_pfme_by_fd (int fd) {
+    struct list_elem* iterator;
+    struct list_elem* what_to_remove_le = NULL;
+    struct process_file_map_elem* what_to_remove_pfme = NULL;
+    for (iterator = list_begin(&thread_current()->process_file_map); iterator != list_end(&thread_current()->process_file_map); iterator = list_next(iterator)) {
+        struct process_file_map_elem* pfme = list_entry(iterator, struct process_file_map_elem, elem);
+        if (pfme->fd == fd) {
+            what_to_remove_le = iterator;
+            what_to_remove_pfme = pfme;
+            //Now allow writes after closing the process
+            //file_allow_write(pfme->file);
+            break;
+        }
+    }
+    bool removed = false;
+    if (what_to_remove_le != NULL) {
+        removed = true;
+        list_remove(what_to_remove_le);
+    }
+    if (what_to_remove_pfme != NULL) {
+        free(what_to_remove_pfme);
+    }
+
+    if (removed) {
+    //Now, we shift all file descriptors down and decrement the value of next_fd
+        for (iterator = list_begin(&thread_current()->process_file_map); iterator != list_end(&thread_current()->process_file_map); iterator = list_next(iterator)) {
+            struct process_file_map_elem* pfme = list_entry(iterator, struct process_file_map_elem, elem);
+            if (pfme->fd > fd) {
+                pfme->fd --;
+            }
+        }
+        thread_current()->next_fd --;
+    }
+}
+
+//Called upon process exiting/termination
+void close_all_fd (void) {
+    while (!list_empty(&thread_current()->process_file_map)) {
+        struct list_elem* popped = list_pop_front(&thread_current()->process_file_map);
+        struct process_file_map_elem* popped_pfme = list_entry(popped, struct process_file_map_elem, elem);
+        free(popped_pfme);
+    }
+}
+
 #endif
