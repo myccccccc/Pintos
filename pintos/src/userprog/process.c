@@ -21,7 +21,6 @@
 #include "threads/malloc.h"
 #include "list.h"
 
-static struct semaphore temporary;
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 static void *arguments_passing(char **argv, int argc, void *esp);
@@ -37,17 +36,6 @@ process_execute (const char *file_name)
   char *fn_copy, *fn_copy2, *save_ptr, *s;
   tid_t tid;
   struct wait_status *tid_wait_status;
-
-  if (get_all_list_size() == 2) //main is first executing a proc
-  {
-    sema_init (&temporary, 0);
-  }
-
-  //struct file* f = filesys_open(file_name);
-  //if (f != NULL) {
-    //file_deny_write(f);
-  //}
-
 
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
@@ -65,10 +53,6 @@ process_execute (const char *file_name)
   tid = thread_create (s, PRI_DEFAULT, start_process, fn_copy);
   tid_wait_status = get_tid_wait_status(tid);
   sema_down(&tid_wait_status->wait_load);
-
-  //if (f!= NULL) {
-   // file_allow_write(f);
-  //}
 
   palloc_free_page (fn_copy2);
   if (tid == TID_ERROR)
@@ -145,8 +129,21 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED)
 {
-  sema_down (&temporary);
-  return 0;
+  struct wait_status *tid_wait_status;
+  tid_wait_status = get_tid_wait_status(child_tid);
+  int tid_exit_code;
+  if (tid_wait_status == NULL)
+  {
+    return -1;
+  }
+  else
+  {
+    sema_down(&tid_wait_status->dead);
+    tid_exit_code = tid_wait_status->exit_code;
+    list_remove(&tid_wait_status->elem);
+    free(tid_wait_status);
+    return tid_exit_code;
+  }
 }
 
 /* Free the current process's resources. */
@@ -161,6 +158,11 @@ process_exit (void)
   pd = cur->pagedir;
   //Clean up malloc'ed memory for process file map elements, and also allow writes again
   close_all_fd();
+  if (cur->holding_filesys_lock == true)
+  {
+    filesys_lock_release();
+  }
+
   if (pd != NULL)
     {
       /* Correct ordering here is crucial.  We must set
@@ -181,6 +183,7 @@ process_exit (void)
   else
   {
     struct wait_status *ws;
+    printf("%s: exit(%d)\n", thread_current ()->name, thread_current()->wait_status->exit_code);
     lock_acquire(&cur->wait_status->lock);
     cur->wait_status->me_alive = 0;
     if (cur->wait_status->parent_alive == 0)
@@ -209,13 +212,7 @@ process_exit (void)
       }
       
     }
-    if (get_all_list_size() == 3)//the last process is exiting
-    {
-      sema_up (&temporary);
-    }
-  }
-  
-  
+  }  
 }
 
 /* Sets up the CPU for running user code in the current

@@ -21,6 +21,12 @@
    of thread.h for details. */
 #define THREAD_MAGIC 0xcd6abf4b
 
+#ifdef USERPROG
+/* use synchronization to ensure that only one process
+   at a time is executing file system code */
+static struct lock fsys_lock;
+#endif
+
 /* List of processes in THREAD_READY state, that is, processes
    that are ready to run but not actually running. */
 static struct list ready_list;
@@ -93,6 +99,9 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
+  #ifdef USERPROG
+  lock_init(&fsys_lock);
+  #endif
 
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
@@ -475,6 +484,7 @@ init_thread (struct thread *t, const char *name, int priority)
   list_init(&t->children);
   list_init(&t->process_file_map);
   t->next_fd = 2;
+  t->holding_filesys_lock = false;
   #endif
   intr_set_level (old_level);
 }
@@ -610,7 +620,7 @@ void init_wait_status(struct thread *t)
     list_push_back(&thread_current()->children, &t->wait_status->elem);
     t->wait_status->exit_code = -1;
     lock_acquire(&t->wait_status->lock);
-    t->wait_status->parent_alive = 0;
+    t->wait_status->parent_alive = 1;
     t->wait_status->me_alive = 1;
     lock_release(&t->wait_status->lock);
     t->wait_status->tid = t->tid;
@@ -675,45 +685,61 @@ void remove_pfme_by_fd (int fd) {
     struct list_elem* iterator;
     struct list_elem* what_to_remove_le = NULL;
     struct process_file_map_elem* what_to_remove_pfme = NULL;
+    struct process_file_map_elem* pfme = NULL;
     for (iterator = list_begin(&thread_current()->process_file_map); iterator != list_end(&thread_current()->process_file_map); iterator = list_next(iterator)) {
-        struct process_file_map_elem* pfme = list_entry(iterator, struct process_file_map_elem, elem);
+        pfme = list_entry(iterator, struct process_file_map_elem, elem);
         if (pfme->fd == fd) {
             what_to_remove_le = iterator;
             what_to_remove_pfme = pfme;
-            //Now allow writes after closing the process
+            file_allow_write(pfme->file);
             file_close(pfme->file);
             break;
         }
     }
-    bool removed = false;
-    if (what_to_remove_le != NULL) {
-        removed = true;
-        list_remove(what_to_remove_le);
-    }
     if (what_to_remove_pfme != NULL) {
+        list_remove(what_to_remove_le);
         free(what_to_remove_pfme);
-    }
-
-    if (removed) {
-    //Now, we shift all file descriptors down and decrement the value of next_fd
-        for (iterator = list_begin(&thread_current()->process_file_map); iterator != list_end(&thread_current()->process_file_map); iterator = list_next(iterator)) {
+        //Now, we shift all file descriptors down and decrement the value of next_fd
+        /*for (iterator = list_begin(&thread_current()->process_file_map); iterator != list_end(&thread_current()->process_file_map); iterator = list_next(iterator)) {
             struct process_file_map_elem* pfme = list_entry(iterator, struct process_file_map_elem, elem);
             if (pfme->fd > fd) {
                 pfme->fd --;
             }
         }
-        thread_current()->next_fd --;
+        thread_current()->next_fd --;*/
     }
 }
 
 //Called upon process exiting/termination
 void close_all_fd (void) {
+    filesys_lock_acuqire();
     while (!list_empty(&thread_current()->process_file_map)) {
         struct list_elem* popped = list_pop_front(&thread_current()->process_file_map);
         struct process_file_map_elem* popped_pfme = list_entry(popped, struct process_file_map_elem, elem);
+        file_allow_write(popped_pfme->file);
         file_close(popped_pfme->file);
         free(popped_pfme);
     }
+    filesys_lock_release();
+}
+
+void filesys_lock_acuqire(void)
+{
+  thread_current()->holding_filesys_lock = true;
+  if (lock_held_by_current_thread(&fsys_lock))
+  {
+    return;
+  }
+  lock_acquire(&fsys_lock);
+}
+void filesys_lock_release(void)
+{
+  thread_current()->holding_filesys_lock = false;
+  if (!lock_held_by_current_thread(&fsys_lock))
+  {
+    return;
+  }
+  lock_release(&fsys_lock);
 }
 
 #endif

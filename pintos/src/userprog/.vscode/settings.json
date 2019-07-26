@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "exception.h": "c",
+        "main.h": "c",
+        "lib.h": "c"
+    }
+}

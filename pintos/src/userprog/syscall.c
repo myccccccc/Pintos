@@ -34,14 +34,10 @@ static int proc_exec (const char *file);
 static void proc_exit(int status, struct intr_frame *f);
 static int proc_wait (int pid);
 
-static struct lock fsys_lock;
-
 void
 syscall_init (void)
 {
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
-  //list_init(&kernel_file_map);
-  lock_init(&fsys_lock);
 }
 
 static void
@@ -77,70 +73,70 @@ syscall_handler (struct intr_frame *f UNUSED)
     proc_exit(args[1], f);
   }
   else if (args[0] == SYS_CREATE) {
-    lock_acquire(&fsys_lock);
     access_user_memory(args+1, f);
     access_user_memory((uint32_t*) *(args + 1), f);
     access_user_memory(args+2, f);
+    filesys_lock_acuqire();
     f->eax = (int) proc_create((const char*) args[1], args[2]);
-    lock_release(&fsys_lock);
+    filesys_lock_release();
   }
   else if (args[0] == SYS_REMOVE) {
-    lock_acquire(&fsys_lock);
     access_user_memory(args + 1, f);
     access_user_memory((uint32_t*) *(args+1), f);
+    filesys_lock_acuqire();
     f->eax = (int) proc_remove((const char*) args[1]);
-    lock_release(&fsys_lock);
+    filesys_lock_release();
   }
   else if (args[0] == SYS_OPEN) {
-    lock_acquire(&fsys_lock);
     access_user_memory(args+1, f);
     access_user_memory((uint32_t*) *(args+1), f);
+    filesys_lock_acuqire();
     f->eax = proc_open((const char*) args[1]);
-    lock_release(&fsys_lock);
+    filesys_lock_release();
   }
   else if (args[0] == SYS_CLOSE) {
-    lock_acquire(&fsys_lock);
     access_user_memory(args+1, f);
+    filesys_lock_acuqire();
     proc_close(args[1]);
-    lock_release(&fsys_lock);
+    filesys_lock_release();
   }
   else if (args[0] == SYS_READ) {
-    lock_acquire(&fsys_lock);
     access_user_memory(args+1, f);
     access_user_memory(args+2, f);
     access_user_memory(args+3, f);
     access_user_memory((uint32_t*) *(args+2), f);
+    filesys_lock_acuqire();
     f->eax = proc_read(args[1], (void*) args[2], args[3]);
-    lock_release(&fsys_lock);
+    filesys_lock_release();
   }
   else if (args[0] == SYS_WRITE)
   {
-    lock_acquire(&fsys_lock);
     access_user_memory(args+1, f);
     access_user_memory(args+2, f);
     access_user_memory(args+3, f);
     access_user_memory((uint32_t*)*(args+2), f);
+    filesys_lock_acuqire();
     f->eax = proc_write(args[1], (const void *) args[2], args[3]);
-    lock_release(&fsys_lock);
+    filesys_lock_release();
   }
   else if (args[0] == SYS_FILESIZE) {
-    lock_acquire(&fsys_lock);
     access_user_memory(args+1, f);
+    filesys_lock_acuqire();
     f->eax = proc_filesize(args[1]);
-    lock_release(&fsys_lock);
+    filesys_lock_release();
   }
   else if (args[0] == SYS_SEEK) {
-    lock_acquire(&fsys_lock);
     access_user_memory(args+1, f);
     access_user_memory(args+2, f);
+    filesys_lock_acuqire();
     proc_seek(args[1], args[2]);
-    lock_release(&fsys_lock);
+    filesys_lock_release();
   }
   else if (args[0] == SYS_TELL) {
-    lock_acquire(&fsys_lock);
     access_user_memory(args+1, f);
+    filesys_lock_acuqire();
     f->eax = (int) proc_tell(args[1]);
-    lock_release(&fsys_lock);
+    filesys_lock_release();
   }
 }
 
@@ -170,20 +166,12 @@ static void proc_exit(int status, struct intr_frame *f)
 {
   f->eax = status;
   thread_current()->wait_status->exit_code = status;
-  printf("%s: exit(%d)\n", thread_current ()->name, status);
-  //close_all_fd();
   thread_exit();
 }
 
 static int proc_exec (const char *file)
 {
   int pid = process_execute(file);
-
-  //struct file* opened = filesys_open(file);
-  //if (opened != NULL) {
-    //file_close(opened);
-  //}
-
   if (get_tid_wait_status(pid)->load_status == -1)
   {
     return -1;
@@ -193,21 +181,7 @@ static int proc_exec (const char *file)
 
 static int proc_wait (int pid)
 {
-  struct wait_status *tid_wait_status;
-  tid_wait_status = get_tid_wait_status(pid);
-  int tid_exit_code;
-  if (tid_wait_status == NULL)
-  {
-    return -1;
-  }
-  else
-  {
-    sema_down(&tid_wait_status->dead);
-    tid_exit_code = tid_wait_status->exit_code;
-    list_remove(&tid_wait_status->elem);
-    free(tid_wait_status);
-    return tid_exit_code;
-  }
+  return process_wait(pid);
 }
 
 static bool proc_create(const char* f, unsigned initial_size) {
@@ -226,32 +200,12 @@ static int proc_open(const char* f) {
         return -1;
     }
     else {
-        //file_allow_write(opened);
+        if (list_size(&thread_current()->process_file_map) >= MAX_FD_NUM)
+        {
+          file_close(opened);
+          return -1;
+        }
         create_and_push_back_pfme(opened);
-
-        //For now, ignore the kernel file map
-        /*
-        struct kernel_file_map_elem* kfme = NULL;
-
-        struct list_elem* kernel_map_index;
-        for (kernel_map_index = list_begin(&kernel_file_map); kernel_map_index != list_end(&kernel_file_map); kernel_map_index = list_next(kernel_map_index)) {
-            struct kernel_file_map_elem* current_kfme = list_entry(kernel_map_index, struct kernel_file_map_elem, elem);
-            if (current_kfme->file == opened) {
-                kfme = current_kfme;
-                break;
-            }
-        }
-
-        if (kfme != NULL) {
-            kfme->num_proc ++;
-        }
-        else {
-            kfme = malloc(sizeof(struct kernel_file_map_elem));
-            kfme->file = opened;
-            kfme->num_proc = 1;
-            list_push_back(&kernel_file_map, kfme->elem);
-        }*/
-
         struct list_elem* last = list_back(&thread_current()->process_file_map);
         struct process_file_map_elem* pfme_last = list_entry(last, struct process_file_map_elem, elem);
         //printf("NEW FILE DESCRIPTOR IS %d\n", pfme_last->fd);
@@ -278,11 +232,9 @@ static int proc_read(int fd, void* buffer, unsigned size) {
       struct process_file_map_elem* pfme = list_entry(index, struct process_file_map_elem, elem);
       if (pfme->fd == fd) {
         int num_read = (int) file_read(pfme->file, buffer, (off_t) size);
-        //printf("NUMBER OF BYTES READ WAS %d\n", num_read);
         return num_read;
       }
     }
-    //On the case that we provided an fd that did not correspond to an open file
     return -1;
   }
   return -1;
@@ -301,7 +253,6 @@ static int proc_write(int fd, const void *buffer, unsigned size)
       struct process_file_map_elem* pfme = list_entry(index, struct process_file_map_elem, elem);
       if (pfme->fd == fd) {
         int num_written = (int) file_write(pfme->file, buffer, (off_t) size);
-        //printf("NUMBER OF BYTES WRITTEN WAS %d\n", num_written);
         return num_written;
       }
     }

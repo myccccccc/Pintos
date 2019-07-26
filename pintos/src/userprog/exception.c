@@ -4,6 +4,7 @@
 #include "userprog/gdt.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
+#include "userprog/process.h"
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
@@ -140,8 +141,6 @@ page_fault (struct intr_frame *f)
      be assured of reading CR2 before it changed). */
   intr_enable ();
 
-  //Print out exit code:
-  printf("%s: exit(%d)\n", thread_current ()->name, -1);
 
   /* Count page faults. */
   page_fault_cnt++;
