@@ -15,7 +15,7 @@ write-boundary write-zero write-stdin write-bad-fd exec-once exec-arg	\
 exec-multiple exec-missing exec-bad-ptr wait-simple wait-twice		\
 wait-killed wait-bad-pid multi-recurse multi-child-fd rox-simple	\
 rox-child rox-multichild bad-read bad-write bad-read2 bad-write2        \
-bad-jump bad-jump2 iloveos practice remove-normal remove-missing)
+bad-jump bad-jump2 iloveos practice remove-normal remove-open)
 
 tests/userprog_PROGS = $(tests/userprog_TESTS) $(addprefix \
 tests/userprog/,child-simple child-args child-bad child-close child-rox)
@@ -101,7 +101,7 @@ tests/userprog/child-close_SRC = tests/userprog/child-close.c
 tests/userprog/child-rox_SRC = tests/userprog/child-rox.c
 
 tests/userprog/remove-normal_SRC = tests/userprog/remove-normal.c tests/main.c
-tests/userprog/remove-missing_SRC = tests/userprog/remove-missing.c tests/main.c
+tests/userprog/remove-open_SRC = tests/userprog/remove-open.c tests/main.c
 
 $(foreach prog,$(tests/userprog_PROGS),$(eval $(prog)_SRC += tests/lib.c))
 
@@ -138,3 +138,4 @@ tests/userprog/rox-child_PUTFILES += tests/userprog/child-rox
 tests/userprog/rox-multichild_PUTFILES += tests/userprog/child-rox
 
 tests/userprog/remove-normal_PUTFILES += tests/userprog/sample.txt
+tests/userprog/remove-open_PUTFILES += tests/userprog/sample.txt
