@@ -9,8 +9,107 @@ Final Report for Project 2: User Programs
 
 
 ### Task 2 (Process Operation Syscalls):
+### Improvements:
 
+#### In `threads.h`:
+```C
+struct  wait_status
+{
+	struct  list_elem elem; /* ‘children’ list element. */
+	struct  lock lock; /* Protects me_alive and parent_alive. */
+	int me_alive; //init in
+	int parent_alive; //init in init_thread()
+	tid_t tid; /* Child thread id. */
+	int exit_code; /* Child exit code, if dead. */
+	int load_status; /* 0 successfully loaded, -1 fail to load */
+	struct  semaphore wait_load; /* parent will wait for child's wait_load to wait for child proc to finish loading */
+	struct  semaphore dead;
+};
+struct  process_file_map_elem {
+	int fd;
+	struct  file* file;
+	struct  list_elem elem;
+};
+struct thread
+{
+...
+#ifdef  USERPROG
+/* Owned by userprog/process.c. */
+uint32_t  *pagedir; /* Page directory. */
+struct  wait_status  *wait_status; /* This process’s completion state. */
+struct  list children; /* Completion status of children. */
+struct  list process_file_map; /* List of process_file_map_elem that deals with maps file descriptors to file structs */
+int next_fd; /*Next file descriptor value to use upon successful syscall to open; ranges from 2 to 128, inclusive*/
+//NOTE: next_fd will only be updated on the first call to a file's open, unless that file has been removed
+bool holding_filesys_lock;
+#endif
+...
+};
+```
+#### In `process.h`:
+```c
+int
+process_wait (tid_t child_tid UNUSED)
+{
+	struct wait_status *tid_wait_status;
+	tid_wait_status =  get_tid_wait_status(child_tid);
+	int tid_exit_code;
+	if (tid_wait_status ==  NULL)
+	{
+		return  -1;
+	}
+	else
+	{
+		sema_down(&tid_wait_status->dead);
+		tid_exit_code = tid_wait_status->exit_code;
+		list_remove(&tid_wait_status->elem);
+		free(tid_wait_status);
+		return tid_exit_code;
+	}
+}
 
+void
+process_exit (void)
+{
+	...
+	if (get_all_list_size() <=  2) //only main and idle left
+	{
+	}
+	else
+	{
+		struct wait_status *ws;
+		printf("%s: exit(%d)\n", thread_current ()->name, thread_current()->wait_status->exit_code);
+		lock_acquire(&cur->wait_status->lock);
+		cur->wait_status->me_alive  =  0;
+		if (cur->wait_status->parent_alive  ==  0)
+		{
+			lock_release(&cur->wait_status->lock);
+			free(cur->wait_status);
+		}
+		else
+		{
+			sema_up(&cur->wait_status->dead);
+			lock_release(&cur->wait_status->lock);
+		}
+
+		while(!list_empty(&cur->children))
+		{
+			ws=list_entry(list_pop_front(&cur->children), struct wait_status, elem);
+			lock_acquire(&ws->lock);
+			ws->parent_alive  =  0;
+			if (ws->me_alive  ==  0)
+			{
+				lock_release(&ws->lock);
+				free(ws);
+			}
+			else
+			{
+				lock_release(&ws->lock);
+			}
+		}
+	}
+}
+```
 
 ### Task 3 (File Operation Syscalls):
 
