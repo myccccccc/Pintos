@@ -112,8 +112,17 @@ process_exit (void)
 ```
 
 ### Task 3 (File Operation Syscalls):
+**1)** The `file_inode_list_elem` struct was eliminated due to two reasons. The first was that a file struct already had direct access to its corresponding inode (simply access the inode as a member variable of the file, i.e. someFile.inode); the second was that there was no need to directly modify inodes, since we could just use methods inside file.c or filesys.c that would (behind the scenes) call inode methods anyways.
 
+**2)** Although not technically a change, a clarification on the usage of the file descriptor to file map (represented as a linked list of `fd_file_list_elem` structs) is probably useful here. Specifically, upon OPENING a file (i.e. during an open syscall), the list would be appended to. The insertion did not require any explicit ordering logic – the new element always went to the back; however, due to the nature of our file descriptor allocation, the resulting list was always sorted.
 
+`create_and_push_back_pfme`, a method inside thread.c, allocated file descriptors according to a `next_fd` member variable inside each thread struct. At the start, `next_fd` is 2, due to the fact that file descriptors 0 and 1 are reserved for stdin and stdout, respectively. Upon successful completion of `create_and_push_back_pfme`, `next_fd` is incremented by 1. `next_fd` achieves a maximum value of 128; upon reaching this point, open syscalls no longer modify the file descriptor file map, and will fail to open a file until at least one file is closed.
+
+**3)** Upon closing a file (via its file descriptor), `next_fd` is decremented by 1, and all file descriptor values greater than the file descriptor that was closed are decreased by 1. This occurs in every close syscall, and although somewhat time consuming, is necessary to maintain simple logic in manipulating `next_fd`. The actual method that does this is `remove_pfme_by_fd`, located inside thread.c. Note that this method also frees the memory allocated for the `fd_file_list_elem` being removed (since it is created via malloc), and also frees the file struct via `file_close`, which allows writes on that file again.
+
+**4)** If a thread is terminated, whether naturally via the exit syscall or via a kernel decision, it will call `process_exit`. Thus, we call `close_all_fd`, a method inside thread.c, from `process_exit`, in order to simulate removing all `fd_file_list_elem` structs associated with the terminated thread (including freeing up of memory).
+
+**5)** All syscalls check memory accesses before actually executing the underlying syscall code, via `access_user_memory` in syscall.c. For example, upon calling sys_create, which takes in a character array and an unsigned value, the location that holds the pointer for the array and the location of the unsigned value must be checked for validity, in addition to a check on the actual place where the character array is stored.
 
 ## Reflection
 
@@ -124,10 +133,12 @@ Zewei Ding wrote the initial design for task1, but after discussing with TA, we 
 Jiasheng Qin first wrote the initial design for task2. And Yingchun Ma later inplemented task2 with some improvement as listed above. Yingchun Ma wrote the final report for task2
 
 ### Task 3
-
+Jiasheng Qin wrote most of the finalized version for task3, with some edits from the other group members in order to pass the multi-oom test.
 
 ### Tests
 Yingchun Ma wrote the tests.
+
+In general, one of the strongest points of this project was the completion of tasks in a very timely manner; scheduling was performed very effectively, with group members asking TAs and going to the project party in order to resolve remaining issues. Something that could have been improved might be collaboration, as task completion was (initially) largely isolated and independent.
 
 ## Student Testing Report
 
