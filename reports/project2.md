@@ -5,6 +5,30 @@ Final Report for Project 2: User Programs
 ## Changes
 
 ### Task 1 (Argument Passing):
+**1)** Compared with the initial design document, we set the maximum number of arguments to 128 in our final version of implementation. 
+```
+/* Set the maximum number of arguments to 128 */
+char *argv[128]; 
+```
+**2)** Besides, instead of implementing all the function by ourselves to parse the command line arguments, we used `strotok_r` to tokenize the `file_name` with `space(" ")` as the delimiter. This function was called in the function `static  void start_process (void  *file_name_)` and was followd by the function `bool load (const  char  *file_name,  void (**eip) (void),  void  **esp)`.
+```
+// char *strtok_r(char *s, const char *delimiters, char **save_ptr)
+for (token =  strtok_r (file_name,  " ",  &save_ptr); token !=  NULL; token =  strtok_r (NULL,  " ",  &save_ptr))
+{
+	argv[argc] = token;
+	argc++;
+}
+success =  load (argv[0],  &if_.eip,  &if_.esp);
+```
+**3)** Another detaile that we didn't mention in the original design is the word alignment before pushing arguments to the stack. If the `esp` can not be devided by 4, then round the stack pointer down to a multiple of 4.  The following while loop is added in the function `static  void  *arguments_passing(char  **argv,  int argc,  void  *esp)`.
+```
+while ((int) char_esp %  4  !=  0)
+{
+	char_esp--;
+}
+```
+**4)** For synchronization, Using `strtok_r` will maintain thread safety, while our own initial version of function for parsing is not.
+
 
 
 
@@ -133,7 +157,7 @@ Zewei Ding wrote the initial design for task1, but after discussing with TA, we 
 Jiasheng Qin first wrote the initial design for task2. And Yingchun Ma later inplemented task2 with some improvement as listed above. Yingchun Ma wrote the final report for task2
 
 ### Task 3
-Jiasheng Qin wrote most of the finalized version for task3, with some edits from the other group members in order to pass the multi-oom test.
+Jingqi Wang wrote the initial design for task3. Jiasheng Qin wrote most of the finalized version for task3, with some edits from the other group members in order to pass the multi-oom test.
 
 ### Tests
 Yingchun Ma wrote the tests.
