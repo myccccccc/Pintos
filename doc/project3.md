@@ -4,13 +4,60 @@ Design Document for Project 3: File System
 ## Group Members
 
 * Jiasheng Qin <jqin0713@berkeley.edu>
-* FirstName LastName <email@domain.example>
-* FirstName LastName <email@domain.example>
-* FirstName LastName <email@domain.example>
+* Jingqi Wang <jackiewang@berkeley.edu>
+* Yingchun Ma <mayingchun@berkeley.edu>
+* Zewei Ding <ding.zew@berkeley.edu>
 
 --------------------------
 
 **Task 1**
+
+**Data structures and functions**
+
+**In `inode.c`:**
+```C
+
+#define CACHE_BLOCKS_NUM 64;
+
+struct cache_block cache_blocks[CACHE_BLOCKS_NUM]; /* Array of cache_block */                         
+unsigned clock_index;                           /* Current position of the clock hand for clock algorithm */
+
+struct cache_block {
+    block_sector_t sector_idx;    /* The sector on disk that this cache_block is uesed for */
+    void *data;               /* Raw data*/
+    struct lock block_lock;   
+    bool valid;               /* True if this cache_block is caching a sector */
+    bool dirty;               /* Dirty bit */
+    bool recently_used;       /* Flag for clock algorithm (evict if false) */
+}
+
+void filesys_cache_init();
+
+void cache_read_at(block_sector_t sector, void void *buffer, off_t size, off_t block_ofs);
+
+void cache_write_at(block_sector_t sector, const void *buffer, off_t size, off_t block_ofs);
+
+void cache_flush();
+```
+
+**Algorithms**
+
+In `filesys_cache_init()`, we initialize `clock_index`, `cache_blocks`.  
+
+
+In `cache_read_at(...)` and `cache_write_at(...)`, we need to iterate through the entries to check if the `sector` exists in the cache.  Then, for `cache_read_at(...)`, if the `sector` exists, we just read it into the `buffer`. If not we run the clock algorithm on `cache_blocks` to evict a entry and load the new entry into its place.  If we are doing `cache_write_at(...)`, if the `sector` is loaded into the cache, we directly write to it and set the `dirty` bit to true.  Otherwise, we find an entry to evict again, write it out to disk, then load the `sector` we are writing to into the cache and write to it.  Also, whenever a `cache_block` is read or written to, we set the `recently_used` flag to `true`.
+
+In `cache_flush()`, we iterate through `cache_blocks` and directly write all dirty entries into the appropriate `block_sector_t` using the `block_write(...)` function.
+
+**Synchronization**
+
+For concurrent reads or writes to the same sector there will have to be usage of the `b
+
+**Rationale**
+
+This implementation is simple. We limit the cache to 64 sectors, using the clock algorithm,, we implement a write-back cache that flushes on eviction/shutdown, we don't use a bounce buffer.
+
+The only issues is that finding a sector in the cache takes time linear to the number of the cache size because we need to iterate the array to find the corresponding `block_sector_t`. 
 
 --------------------------
 
@@ -79,6 +126,66 @@ We plan to potentially have some helper methods to calculate block id based on b
 --------------------------
 
 **Task 3**
+
+**Data Structures and Functions:**
+In thread.c:
+```
+struct thread
+{
+	...
+	struct dir  *cur_dir; 	
+	/* The thread's current working directory /
+	...
+}
+  
+```
+In inode.c :
+```
+struct inode
+{
+	...
+	bool is_dir;  
+	/* indicate if inode is a directory or not */
+	...
+}
+
+```
+
+**Algorithms:**
+
+We add a `struct dir  *cur_dir` in `struct thread` to keep track of the thread's current working directory.
+In order to support for relative paths for any syscall, we will use the current directory as the start of our search.
+
+We also add a `bool is_dir` in `struct inode` to indicate whether the inode is corresponding to a directory or a file.
+
+Some baisc implementations for syscalls:
+
+`bool chdir (const char *dir)`:
+ Can simply set the `cur_dir` to the directory passed in.
+
+`bool mkdir (const char *dir)`: 
+Create a new file with the `is_dir` set to `true`.
+
+`bool readdir (int fd, char *name)`: 
+By calling the `dir_readdir()`  in `directory.c`.
+
+`bool isdir (int fd)`: 
+Map the file descriptor to a inode and return the `is_dir` for the corresponding inode.
+
+`int inumber (int fd)`: 
+Map the file descriptor to a inode and call `inode_get_inumber()` in `inode.c`.
+
+
+
+**Synchronization:**
+
+The synchronization problem should been handled in the buffer cache. Since we have already add a lock for each sector, there is no need to consider synchronization when adding subdirectories to the filesystem.
+
+**Rationale:**
+
+Adding a pointer to the current working directory for each thread is the most straightforward way.  And adding a `bool is_dir`for each inode is also the most intuitive way to distinguish between a directory and a file.
+ 
+
 
 --------------------------
 
