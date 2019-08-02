@@ -181,7 +181,7 @@ Map the file descriptor to a inode and call `inode_get_inumber()` in `inode.c`.
 
 **Synchronization:**
 
-The synchronization problem should been handled in the buffer cache. Since we have already add a lock for each sector, there is no need to consider synchronization when adding subdirectories to the filesystem.
+The synchronization problem should been handled in the buffer cache. Since we have already added a lock for each sector, there is no need to consider synchronization when adding subdirectories to the filesystem.
 
 **Rationale:**
 
