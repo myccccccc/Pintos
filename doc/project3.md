@@ -128,8 +128,10 @@ We plan to potentially have some helper methods to calculate block id based on b
 **Task 3**
 
 **Data Structures and Functions:**
+
 In thread.c:
-```
+
+```c
 struct thread
 {
 	...
@@ -140,7 +142,7 @@ struct thread
   
 ```
 In inode.c :
-```
+```c
 struct inode
 {
 	...
