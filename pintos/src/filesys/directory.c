@@ -5,6 +5,7 @@
 #include "filesys/filesys.h"
 #include "filesys/inode.h"
 #include "threads/malloc.h"
+#include "threads/thread.h"
 
 /* A directory. */
 struct dir
@@ -26,7 +27,7 @@ struct dir_entry
 bool
 dir_create (block_sector_t sector, size_t entry_cnt)
 {
-  return inode_create (sector, entry_cnt * sizeof (struct dir_entry));
+  return inode_create (sector, entry_cnt * sizeof (struct dir_entry), 1);
 }
 
 /* Opens and returns the directory for the given INODE, of which
@@ -34,6 +35,11 @@ dir_create (block_sector_t sector, size_t entry_cnt)
 struct dir *
 dir_open (struct inode *inode)
 {
+  if (is_dir(inode) == false)
+  {
+    inode_close (inode);
+    return NULL;
+  }
   struct dir *dir = calloc (1, sizeof *dir);
   if (inode != NULL && dir != NULL)
     {
@@ -194,25 +200,56 @@ dir_remove (struct dir *dir, const char *name)
 
   /* Find directory entry. */
   if (!lookup (dir, name, &e, &ofs))
-    goto done;
+    return success;
 
   /* Open inode. */
   inode = inode_open (e.inode_sector);
   if (inode == NULL)
-    goto done;
+    return success;
 
-  /* Erase directory entry. */
-  e.in_use = false;
-  if (inode_write_at (dir->inode, &e, sizeof e, ofs) != sizeof e)
-    goto done;
+  if (!is_dir(inode))
+  {
+    /* Erase directory entry. */
+    e.in_use = false;
+    if (inode_write_at (dir->inode, &e, sizeof e, ofs) != sizeof e)
+    {
+      inode_close (inode);
+      return success;
+    }
 
-  /* Remove inode. */
-  inode_remove (inode);
-  success = true;
+    /* Remove inode. */
+    inode_remove (inode);
+    success = true;
 
- done:
-  inode_close (inode);
-  return success;
+    inode_close (inode);
+    return success;
+  }
+  else
+  {
+    struct dir *inode_dir = dir_open(inode);
+    if (inode_open_cnt(inode) == 1 && dir_isempty(inode_dir))
+    {
+      /* Erase directory entry. */
+      e.in_use = false;
+      if (inode_write_at (dir->inode, &e, sizeof e, ofs) != sizeof e)
+      {
+        dir_close(inode_dir);
+        return success;
+      }
+
+      /* Remove inode. */
+      inode_remove (inode);
+      success = true;
+
+      dir_close(inode_dir);
+      return success;
+    }
+    else
+    {
+      dir_close(inode_dir);
+      return success;
+    } 
+  }
 }
 
 /* Reads the next directory entry in DIR and stores the name in
@@ -233,4 +270,140 @@ dir_readdir (struct dir *dir, char name[NAME_MAX + 1])
         }
     }
   return false;
+}
+
+/* Extracts a file name part from *SRCP into PART, and updates *SRCP so that the
+next call will return the next file name part. Returns 1 if successful, -1 part is set to the last name in the string, 0 at
+end of string part is not set, -2 for a too-long file name part. */
+int get_next_part (char part[NAME_MAX + 1], char **srcp) 
+{
+  char *src = *srcp;
+  char *src2;
+  char *dst = part;
+  /* Skip leading slashes. If it’s all slashes, we’re done. */
+  while (*src == '/')
+    src++;
+  if (*src == '\0')
+    return 0;
+  /* Copy up to NAME_MAX character from SRC to DST. Add null terminator. */
+  while (*src != '/' && *src != '\0') {
+    if (dst < part + NAME_MAX)
+      *dst++ = *src;
+    else
+      return -2;
+    src++;
+  }
+  *dst = '\0';
+  /* Advance source pointer. */
+  *srcp = src;
+
+  src2 = src;
+  while (*src2 == '/')
+    src2++;
+  if (*src2 == '\0')
+    return -1;
+  return 1;
+}
+
+struct dir *get_dir(char *name, char *file_name)
+{
+  struct dir *start_dir = NULL;
+  int end_of_dir_name;
+  struct inode *file_inode;
+  if (strcmp(name, "") == 0)
+  {
+    return NULL;
+  }
+  if (name[0] == '/')
+  {
+    start_dir = dir_open_root();
+  }
+  else
+  {
+    start_dir = dir_reopen(thread_current()->cwd);
+  }
+  while (true)
+  {
+    if (start_dir == NULL)
+    {
+      return false;
+    }
+    end_of_dir_name = get_next_part(file_name, &name);
+    if (end_of_dir_name == -2 || end_of_dir_name == 0)
+    {
+      dir_close(start_dir);
+      return NULL;
+    }
+    else if (end_of_dir_name == 1)
+    {
+      if (dir_lookup(start_dir, file_name, &file_inode) == false)
+      {
+        dir_close(start_dir);
+        return NULL;
+      }
+      dir_close(start_dir);
+      start_dir = dir_open(file_inode);
+    }
+    else
+    {
+      return start_dir;
+    }
+  }
+}
+
+struct dir *goto_dir(char *name)
+{
+  if (strcmp(name, "") == 0)
+  {
+    return NULL;
+  }
+  char name_add_dot[strlen(name) + 2 + 1];
+  strlcpy(name_add_dot, name, strlen(name) + 1);
+  name_add_dot[strlen(name)] = '/';
+  name_add_dot[strlen(name)+1] = '.';
+  name_add_dot[strlen(name)+2] = '\0';
+  char file_name[NAME_MAX+1];
+  struct inode *file_inode;
+  struct dir *start_dir = get_dir(name_add_dot, file_name);
+  if (start_dir == NULL)
+  {
+    return NULL;
+  }
+  if (dir_lookup(start_dir, file_name, &file_inode) == false)
+  {
+    dir_close(start_dir);
+    return NULL;
+  }
+  dir_close(start_dir);
+  start_dir = dir_open(file_inode);
+  return start_dir;
+}
+
+void add_parent(struct dir *dir, struct dir *parent_dir)
+{
+  dir_add(dir, ".", inode_get_inumber(dir->inode));
+  dir_add(dir, "..", inode_get_inumber(parent_dir->inode));
+}
+
+void dir_seek(struct dir *dir, off_t pos)
+{
+  dir->pos = pos;
+}
+
+off_t dir_tell (struct dir *dir)
+{
+  return dir->pos;
+}
+
+bool dir_isempty (struct dir *dir)
+{
+  char name[NAME_MAX+1];
+  while(dir_readdir(dir, name))
+  {
+    if (strcmp(name, ".") != 0 && strcmp(name, "..") != 0)
+    {
+      return false;
+    }
+  }
+  return true;
 }

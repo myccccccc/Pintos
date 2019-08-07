@@ -212,6 +212,13 @@ thread_create (const char *name, int priority,
   init_wait_status(t);
   #endif
 
+  #ifdef FILESYS
+  if (function != idle)
+  {
+    t->cwd = dir_reopen(thread_current()->cwd);
+  }
+  #endif
+
   /* Add to run queue. */
   thread_unblock (t);
 
@@ -296,9 +303,15 @@ thread_exit (void)
 {
   ASSERT (!intr_context ());
 
-#ifdef USERPROG
+  #ifdef USERPROG
   process_exit ();
-#endif
+  #endif
+  #ifdef FILESYS
+  if (thread_current()->cwd != NULL)
+  {
+    dir_close(thread_current()->cwd);
+  }
+  #endif
 
   /* Remove thread from all threads list, set our status to dying,
      and schedule another process.  That process will destroy us
@@ -485,6 +498,9 @@ init_thread (struct thread *t, const char *name, int priority)
   list_init(&t->process_file_map);
   t->next_fd = 2;
   t->holding_filesys_lock = false;
+  #endif
+  #ifdef FILESYS
+  t->cwd = NULL;
   #endif
   intr_set_level (old_level);
 }
@@ -716,7 +732,6 @@ void close_all_fd (void) {
     while (!list_empty(&thread_current()->process_file_map)) {
         struct list_elem* popped = list_pop_front(&thread_current()->process_file_map);
         struct process_file_map_elem* popped_pfme = list_entry(popped, struct process_file_map_elem, elem);
-        file_allow_write(popped_pfme->file);
         file_close(popped_pfme->file);
         free(popped_pfme);
     }

@@ -6,7 +6,9 @@
 #include "threads/synch.h"
 #include "threads/fixed-point.h"
 #include "filesys/file.h"
+#include "filesys/directory.h"
 //#define USERPROG
+//#define FILESYS
 
 
 /* States in a thread's life cycle. */
@@ -140,7 +142,9 @@ struct thread
     //NOTE: next_fd will only be updated on the first call to a file's open, unless that file has been removed
     bool holding_filesys_lock;
 #endif
-
+#ifdef FILESYS
+    struct dir *cwd;
+#endif
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
   };
