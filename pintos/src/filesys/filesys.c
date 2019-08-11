@@ -6,6 +6,9 @@
 #include "filesys/free-map.h"
 #include "filesys/inode.h"
 #include "filesys/directory.h"
+#include "threads/thread.h"
+
+static bool is_root_dir(char *name);
 
 /* Partition that contains the file system. */
 struct block *fs_device;
@@ -23,11 +26,16 @@ filesys_init (bool format)
 
   inode_init ();
   free_map_init ();
+  inode_cache_init();
 
   if (format)
     do_format ();
 
   free_map_open ();
+  set_root_is_directory();
+  struct dir *root = dir_open_root();
+  add_parent(root, root);
+  thread_current()->cwd = root;
 }
 
 /* Shuts down the file system module, writing any unwritten data
@@ -36,6 +44,7 @@ void
 filesys_done (void)
 {
   free_map_close ();
+  cache_flush();
 }
 
 /* Creates a file named NAME with the given INITIAL_SIZE.
@@ -46,11 +55,12 @@ bool
 filesys_create (const char *name, off_t initial_size)
 {
   block_sector_t inode_sector = 0;
-  struct dir *dir = dir_open_root ();
+  char file_name[NAME_MAX+1];
+  struct dir *dir = get_dir ((char *) name, file_name);
   bool success = (dir != NULL
                   && free_map_allocate (1, &inode_sector)
-                  && inode_create (inode_sector, initial_size)
-                  && dir_add (dir, name, inode_sector));
+                  && inode_create (inode_sector, initial_size, -1)
+                  && dir_add (dir, file_name, inode_sector));
   if (!success && inode_sector != 0)
     free_map_release (inode_sector, 1);
   dir_close (dir);
@@ -66,13 +76,23 @@ filesys_create (const char *name, off_t initial_size)
 struct file *
 filesys_open (const char *name)
 {
-  struct dir *dir = dir_open_root ();
   struct inode *inode = NULL;
+  char file_name[NAME_MAX+1];
+  struct dir *dir = get_dir ((char *) name, file_name);
 
   if (dir != NULL)
-    dir_lookup (dir, name, &inode);
-  dir_close (dir);
-
+  {
+    dir_lookup (dir, file_name, &inode);
+    dir_close (dir);
+  }
+  else
+  {
+    if (is_root_dir((char *)name))
+    {
+      inode = inode_open(ROOT_DIR_SECTOR);
+    }
+  }
+  
   return file_open (inode);
 }
 
@@ -83,10 +103,10 @@ filesys_open (const char *name)
 bool
 filesys_remove (const char *name)
 {
-  struct dir *dir = dir_open_root ();
-  bool success = dir != NULL && dir_remove (dir, name);
+  char file_name[NAME_MAX+1];
+  struct dir *dir = get_dir ((char *) name, file_name);
+  bool success = dir != NULL && dir_remove (dir, file_name);
   dir_close (dir);
-
   return success;
 }
 
@@ -100,4 +120,17 @@ do_format (void)
     PANIC ("root directory creation failed");
   free_map_close ();
   printf ("done.\n");
+}
+
+static bool is_root_dir(char *name)
+{
+  if (strcmp(name, "") == 0)
+    return false;
+  while(*name)
+  {
+    if (*name != '/')
+      return false;
+    name++;
+  }
+  return true;
 }
