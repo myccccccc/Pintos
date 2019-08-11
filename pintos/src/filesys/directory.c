@@ -35,11 +35,10 @@ dir_create (block_sector_t sector, size_t entry_cnt)
 struct dir *
 dir_open (struct inode *inode)
 {
-  if (is_dir(inode) == false)
-  {
-    inode_close (inode);
-    return NULL;
-  }
+    if (!is_dir(inode)) {
+        inode_close(inode);
+        return NULL;
+    }
   struct dir *dir = calloc (1, sizeof *dir);
   if (inode != NULL && dir != NULL)
     {
@@ -200,56 +199,48 @@ dir_remove (struct dir *dir, const char *name)
 
   /* Find directory entry. */
   if (!lookup (dir, name, &e, &ofs))
-    return success;
+    goto done;
 
   /* Open inode. */
   inode = inode_open (e.inode_sector);
   if (inode == NULL)
-    return success;
-
-  if (!is_dir(inode))
-  {
-    /* Erase directory entry. */
-    e.in_use = false;
-    if (inode_write_at (dir->inode, &e, sizeof e, ofs) != sizeof e)
-    {
-      inode_close (inode);
-      return success;
-    }
-
-    /* Remove inode. */
-    inode_remove (inode);
-    success = true;
-
-    inode_close (inode);
-    return success;
-  }
-  else
-  {
-    struct dir *inode_dir = dir_open(inode);
-    if (inode_open_cnt(inode) == 1 && dir_isempty(inode_dir))
-    {
-      /* Erase directory entry. */
+    goto done;
+  
+  if (! is_dir(inode)) {
       e.in_use = false;
       if (inode_write_at (dir->inode, &e, sizeof e, ofs) != sizeof e)
-      {
-        dir_close(inode_dir);
-        return success;
-      }
-
-      /* Remove inode. */
+        goto done;
+      
       inode_remove (inode);
       success = true;
-
-      dir_close(inode_dir);
-      return success;
-    }
-    else
-    {
-      dir_close(inode_dir);
-      return success;
-    } 
   }
+  else {
+      struct dir *inode_dir = dir_open(inode);
+       if (inode_open_cnt(inode) == 1 && dir_isempty(inode_dir)) {
+           /* Erase directory entry. */
+            e.in_use = false;
+            if (inode_write_at (dir->inode, &e, sizeof e, ofs) != sizeof e)
+            {
+              dir_close(inode_dir);
+              return success;
+            }
+
+            /* Remove inode. */
+            inode_remove (inode);
+            success = true;
+
+            dir_close(inode_dir);
+            return success;
+       }
+       else {
+           dir_close(inode_dir);
+           return success;
+       }
+  }
+
+ done:
+  inode_close (inode);
+  return success;
 }
 
 /* Reads the next directory entry in DIR and stores the name in
@@ -379,6 +370,7 @@ struct dir *goto_dir(char *name)
   return start_dir;
 }
 
+//Adds the special "." and ".." entries to the directory
 void add_parent(struct dir *dir, struct dir *parent_dir)
 {
   dir_add(dir, ".", inode_get_inumber(dir->inode));

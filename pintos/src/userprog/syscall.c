@@ -36,7 +36,7 @@ static void proc_exit(int status, struct intr_frame *f);
 static int proc_wait (int pid);
 static bool proc_mkdir(char* dir_name);
 static bool proc_chdir(char* dir_name);
-static int proc_innumber(int fd);
+static int proc_inumber(int fd);
 static bool proc_isdir(int fd);
 static bool proc_readdir(int fd, char *name);
 
@@ -82,38 +82,28 @@ syscall_handler (struct intr_frame *f UNUSED)
     access_user_memory(args+1, f);
     access_user_memory((uint32_t*) *(args + 1), f);
     access_user_memory(args+2, f);
-    //filesys_lock_acuqire();
     f->eax = (int) proc_create((const char*) args[1], args[2]);
-    //filesys_lock_release();
   }
   else if (args[0] == SYS_REMOVE) {
     access_user_memory(args + 1, f);
     access_user_memory((uint32_t*) *(args+1), f);
-    //filesys_lock_acuqire();
     f->eax = (int) proc_remove((const char*) args[1]);
-    //filesys_lock_release();
   }
   else if (args[0] == SYS_OPEN) {
     access_user_memory(args+1, f);
     access_user_memory((uint32_t*) *(args+1), f);
-    //filesys_lock_acuqire();
     f->eax = proc_open((const char*) args[1]);
-    //ilesys_lock_release();
   }
   else if (args[0] == SYS_CLOSE) {
     access_user_memory(args+1, f);
-    //filesys_lock_acuqire();
     proc_close(args[1]);
-    //filesys_lock_release();
   }
   else if (args[0] == SYS_READ) {
     access_user_memory(args+1, f);
     access_user_memory(args+2, f);
     access_user_memory(args+3, f);
     access_user_memory((uint32_t*) *(args+2), f);
-    //filesys_lock_acuqire();
     f->eax = proc_read(args[1], (void*) args[2], args[3]);
-    //filesys_lock_release();
   }
   else if (args[0] == SYS_WRITE)
   {
@@ -121,28 +111,20 @@ syscall_handler (struct intr_frame *f UNUSED)
     access_user_memory(args+2, f);
     access_user_memory(args+3, f);
     access_user_memory((uint32_t*)*(args+2), f);
-    //filesys_lock_acuqire();
     f->eax = proc_write(args[1], (const void *) args[2], args[3]);
-    //filesys_lock_release();
   }
   else if (args[0] == SYS_FILESIZE) {
     access_user_memory(args+1, f);
-    //filesys_lock_acuqire();
     f->eax = proc_filesize(args[1]);
-    //filesys_lock_release();
   }
   else if (args[0] == SYS_SEEK) {
     access_user_memory(args+1, f);
     access_user_memory(args+2, f);
-    //filesys_lock_acuqire();
     proc_seek(args[1], args[2]);
-    //filesys_lock_release();
   }
   else if (args[0] == SYS_TELL) {
     access_user_memory(args+1, f);
-    //filesys_lock_acuqire();
     f->eax = (int) proc_tell(args[1]);
-    //filesys_lock_release();
   }
   else if (args[0] == SYS_MKDIR) {
     access_user_memory(args+1, f);
@@ -154,10 +136,9 @@ syscall_handler (struct intr_frame *f UNUSED)
     access_user_memory((uint32_t*) *(args+1), f);
     f->eax = (int) proc_chdir((char*) args[1]);
   }
-  else if (args[0] == SYS_INUMBER)
-  {
-    access_user_memory(args+1, f);
-    f->eax = proc_innumber(args[1]);
+  else if (args[0] == SYS_INUMBER) {
+      access_user_memory(args + 1, f);
+      f->eax = proc_inumber(args[1]);
   }
   else if (args[0] == SYS_ISDIR)
   {
@@ -373,16 +354,15 @@ static bool proc_chdir(char* dir_name)
   return false;
 }
 
-static int proc_innumber(int fd)
-{
-  struct list_elem* index;
-  for (index = list_begin(&thread_current()->process_file_map); index != list_end(&thread_current()->process_file_map); index = list_next(index)) {
-    struct process_file_map_elem* pfme = list_entry(index, struct process_file_map_elem, elem);
-    if (pfme->fd == fd) {
-      return inode_innumber(file_get_inode(pfme->file));
+static int proc_inumber(int fd) {
+    struct list_elem* index;
+    for (index = list_begin(&thread_current()->process_file_map); index != list_end(&thread_current()->process_file_map); index = list_next(index)) {
+      struct process_file_map_elem* pfme = list_entry(index, struct process_file_map_elem, elem);
+      if (pfme->fd == fd) {
+          return file_get_inumber(pfme->file);
+      }
     }
-  }
-  return -1;
+    return -1;
 }
 
 static bool proc_isdir(int fd)

@@ -10,6 +10,9 @@
    sizes in Pintos (yet). */
 #define BLOCK_SECTOR_SIZE 512
 
+//Number of block_sector_t entries inside a single block
+#define ENTRIES_PER_BLOCK 128
+
 /* Index of a block device sector.
    Good enough for devices up to 2 TB. */
 typedef uint32_t block_sector_t;

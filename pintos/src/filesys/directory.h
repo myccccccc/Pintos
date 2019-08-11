@@ -11,6 +11,7 @@
    After directories are implemented, this maximum length may be
    retained, but much longer full path names must be allowed. */
 #define NAME_MAX 14
+
 #define DEFAULT_ENTRY_NUM 128
 
 struct inode;
@@ -36,4 +37,5 @@ int get_next_part (char part[NAME_MAX + 1], char **srcp);
 void dir_seek (struct dir *dir, off_t pos);
 off_t dir_tell (struct dir *dir);
 bool dir_isempty (struct dir *);
+
 #endif /* filesys/directory.h */

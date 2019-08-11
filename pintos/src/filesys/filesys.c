@@ -8,12 +8,11 @@
 #include "filesys/directory.h"
 #include "threads/thread.h"
 
-static bool is_root_dir(char *name);
-
 /* Partition that contains the file system. */
 struct block *fs_device;
 
 static void do_format (void);
+static bool is_root_dir(char* name);
 
 /* Initializes the file system module.
    If FORMAT is true, reformats the file system. */
@@ -33,7 +32,8 @@ filesys_init (bool format)
 
   free_map_open ();
   set_root_is_directory();
-  struct dir *root = dir_open_root();
+  
+  struct dir* root = dir_open_root();
   add_parent(root, root);
   thread_current()->cwd = root;
 }
@@ -55,8 +55,10 @@ bool
 filesys_create (const char *name, off_t initial_size)
 {
   block_sector_t inode_sector = 0;
-  char file_name[NAME_MAX+1];
+  
+  char file_name[NAME_MAX + 1];
   struct dir *dir = get_dir ((char *) name, file_name);
+  
   bool success = (dir != NULL
                   && free_map_allocate (1, &inode_sector)
                   && inode_create (inode_sector, initial_size, -1)
@@ -77,22 +79,20 @@ struct file *
 filesys_open (const char *name)
 {
   struct inode *inode = NULL;
+  
   char file_name[NAME_MAX+1];
   struct dir *dir = get_dir ((char *) name, file_name);
 
-  if (dir != NULL)
-  {
+  if (dir != NULL) {
     dir_lookup (dir, file_name, &inode);
     dir_close (dir);
   }
-  else
-  {
-    if (is_root_dir((char *)name))
-    {
-      inode = inode_open(ROOT_DIR_SECTOR);
-    }
+  else {
+      if (is_root_dir((char*) name)) {
+          inode = inode_open(ROOT_DIR_SECTOR);
+      }
   }
-  
+
   return file_open (inode);
 }
 
@@ -103,10 +103,12 @@ filesys_open (const char *name)
 bool
 filesys_remove (const char *name)
 {
-  char file_name[NAME_MAX+1];
-  struct dir *dir = get_dir ((char *) name, file_name);
+    char file_name[NAME_MAX + 1];
+    struct dir* dir = get_dir((char*) name, file_name);
+  
   bool success = dir != NULL && dir_remove (dir, file_name);
   dir_close (dir);
+
   return success;
 }
 
