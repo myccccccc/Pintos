@@ -12,6 +12,7 @@
 #ifdef FILESYS
 #include "devices/block.h"
 #include "filesys/filesys.h"
+#include "filesys/inode.h"
 #endif
 
 /* Keyboard control register port. */
@@ -33,7 +34,6 @@ shutdown (void)
     case SHUTDOWN_POWER_OFF:
       shutdown_power_off ();
       break;
-
     case SHUTDOWN_REBOOT:
       shutdown_reboot ();
       break;
@@ -57,6 +57,11 @@ void
 shutdown_reboot (void)
 {
   printf ("Rebooting...\n");
+
+#ifdef FILESYS
+  cache_flush();
+#endif
+
 
     /* See [kbd] for details on how to program the keyboard
      * controller. */

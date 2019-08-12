@@ -307,13 +307,14 @@ inode_doubly_indirect_append(struct inode_disk* disk_inode, size_t num_sectors_f
         int last_sector_num_filled = total_current_doubly_indirect_sectors % ENTRIES_PER_BLOCK;
         if (last_sector_num_filled != 0) {
             //printf("Initial remainder filling\n");
+            //Find the last indirect block that contains meaningful block_sector_t values
             block_sector_t last_occupied = doubly_indirect_block_entries[(total_current_doubly_indirect_sectors-1) / ENTRIES_PER_BLOCK];
             //Fill up to the very end of the last indirect block
             int num_to_fill = (int) num_sectors_for_doubly_indirect <= ENTRIES_PER_BLOCK - last_sector_num_filled ?
                 (int) num_sectors_for_doubly_indirect : ENTRIES_PER_BLOCK - last_sector_num_filled;
             
             //Fill in existing entries
-            block_sector_t last_occupied_entries[ENTRIES_PER_BLOCK];
+            static block_sector_t last_occupied_entries[ENTRIES_PER_BLOCK];
             //block_read(fs_device, last_occupied, last_occupied_entries);
             cache_read_at(last_occupied, last_occupied_entries);
             
@@ -340,6 +341,9 @@ inode_doubly_indirect_append(struct inode_disk* disk_inode, size_t num_sectors_f
                     //block_write(fs_device, last_occupied_entries[last_sector_num_filled + ind_data], zeros);
                     cache_write_at(last_occupied_entries[last_sector_num_filled + ind_data], zeros);
                 }
+                //Write the filled out block back to memory
+                cache_write_at(last_occupied, last_occupied_entries);
+
                 //Change the number of sectors to be used in later calculations
                 effective_num_sectors -= num_to_fill;
             }
@@ -756,17 +760,20 @@ inode_write_at(struct inode *inode, const void *buffer_, off_t size,
         
         //We only care about zero padding the last current sector if all of the extra block allocations from previously were executed successfully
         if (direct_passed && indirect_passed && doubly_indirect_passed) {
-            block_sector_t last_sector = byte_to_sector(inode, len-1);
+            block_sector_t last_sector = len == 0 ? byte_to_sector(inode, 0) : byte_to_sector(inode, len-1);
             static char data_buff[BLOCK_SECTOR_SIZE];
             //block_read(fs_device, last_sector, data_buff);
             cache_read_at(last_sector, data_buff);
 
+            int modded_len = len % BLOCK_SECTOR_SIZE;
+
             //Zero padding WITHIN THE LAST SECTOR ONLY
             int zero_padding = offset - len >= 0 ? offset - len : 0;
-            zero_padding = zero_padding > BLOCK_SECTOR_SIZE - len ? BLOCK_SECTOR_SIZE - len : zero_padding;
+            zero_padding = zero_padding > BLOCK_SECTOR_SIZE - modded_len ? BLOCK_SECTOR_SIZE - modded_len : zero_padding;
             
             int index;
-            for (index = len; index < len + zero_padding; index ++) {
+
+            for (index = modded_len; index < modded_len + zero_padding; index ++) {
                 data_buff[index] = 0;
             }
             //Write back zeroed out entries
@@ -777,10 +784,14 @@ inode_write_at(struct inode *inode, const void *buffer_, off_t size,
             //multiples of BLOCK_SECTOR_SIZE
             inode->data.length = offset + size;
             //printf("Write length has now been set to %d\n", (int) inode->data.length);
+
+            //Write altered inode_disk back to disk
+            cache_write_at(inode->sector, &inode->data);
         }
         else {
             //printf("Allocation failed\n");
-            proceed = false;
+            //proceed = false;
+            return -1;
         }
     }
 

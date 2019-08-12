@@ -173,6 +173,7 @@ static int proc_practice (int i)
 
 static void proc_halt(void)
 {
+  //cache_flush();
   shutdown_power_off();
 }
 
