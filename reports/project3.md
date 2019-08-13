@@ -4,6 +4,26 @@ Final Report for Project 3: File System
 ## Changes
 
 ### Task 1 (Buffer Cache):
+```c
+struct cache_block {
+	block_sector_t sector_idx; /* Sector on disk that this cache_block is used for*/
+	void* data; /* Raw data*/
+	struct lock block_lock; /* There can only be one thread in this cache_block */
+	bool dirty; /* Dirty bit */
+	int recently_used; /* Flag for clock algorithm */
+	bool valid; /* True if this cache_block is caching a sector */
+};
+
+/* Array of cache_block */
+struct cache_block cache_blocks[CACHE_BLOCKS_NUM];
+
+/* Current position of the clock hand for clock algorithm */
+unsigned clock_index;
+
+/* There can only be one thread in cache_blocks */
+struct lock cache_blocks_lock;
+```
+I added `clock_index` to record which `cache_block` is the clock hand pointing at, and `cache_blocks_lock` for synchronization, so there can only be one thread at a time to search the whole `cache_blocks` for an appropriate `cache_block`
 
 ### Task 2 (Extensible Files):
 **1)** For synchronization purposes, as per a suggestion from the TA, we changed the locking scheme from a list of locks
@@ -22,20 +42,72 @@ fifth block failed, we would need to "roll back" blocks 1 through 4.
 For example, instead of using 12, we used `NUM_DIRECT`, and defined `NUM_DIRECT` to be 12 in `inode.c`.
 
 ### Task 3 (Subdirectories):
+```c
+struct inode_disk {
+...
+	int32_t is_directory; /*1 is a directory, -1 is not a directory*/
+...
+};
+```
+I put `int32_t is_directory` in `struct inode_disk` instead of `struct inode` to indicate whether this inode is a dir or a regular file. So even though this inode is write to write back to disk, the next time we get it we can still know is this file a dir or a regualr file.
 
+Another important implementation is `get_dir`  function, which are given a path name `name`, and will return the dir which the file is in, also `file_name` is set to the file name. So basically it is in a while loop, and it keeps calling `dir_lookup` until we get to the dir that the file is in. `get_dir` is used in many dir related syscall.
+```c
+struct dir *get_dir(char  *name, char  *file_name)
+{
+	...
+	if (strcmp(name, "") ==  0)
+	{
+	return  NULL;
+	}
+	if (name[0] ==  '/')
+	{
+	start_dir =  dir_open_root();
+	}
+	else
+	{
+	start_dir =  dir_reopen(thread_current()->cwd);
+	}
+	while (true)
+	{
+		if (start_dir ==  NULL)
+		{
+		return  false;
+		}
+		end_of_dir_name =  get_next_part(file_name, &name);
+		if (end_of_dir_name ==  -2  || end_of_dir_name ==  0)
+		{
+			dir_close(start_dir);
+			return  NULL;	
+		}
+		else  if (end_of_dir_name ==  1)
+		{
+			if (dir_lookup(start_dir, file_name, &file_inode) ==  false)
+			{
+				dir_close(start_dir);
+				return  NULL;
+			}
+			dir_close(start_dir);
+			start_dir =  dir_open(file_inode);
+		}
+		else
+		{
+			return start_dir;
+		}
+	}
+}
+```
 ----------------------
 
 ## Reflection
 
 ### Task 1
-
+Yingchun Ma wrote the initial design and the final implementation.
 ### Task 2
 Jiasheng wrote most of the final implementation of extensible files, and performed a large portion of the integration with tasks
-1 and 3. He also wrote the initial design doc for task 2. Yinchun fixed a particularly nasty bug involving the integration
-aspect that had been preventing us from passing 3 tests.
-
+1 and 3. He also wrote the initial design doc for task 2. Yinchun fixed a particularly nasty bug involving the integration aspect that had been preventing us from passing 3 tests.
 ### Task 3
-
+Jingqi wang wrote the initial design and Yingchun Ma wrote the final implementation.
 ### Tests
 Jiasheng wrote the tests.
 
