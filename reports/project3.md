@@ -36,6 +36,8 @@ aspect that had been preventing us from passing 3 tests.
 
 ### Task 3
 
+### Tests
+Jiasheng wrote the tests.
 
 **Positives and potential improvements:** Tasks were done efficiently and very promptly. However, the integration aspect could have
 been simplified with better communication among group members. In addition, perhaps going to office hours earlier to address the
