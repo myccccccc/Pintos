@@ -311,7 +311,11 @@ struct dir *get_dir(char *name, char *file_name)
   }
   else
   {
+    char * buf = malloc(10);
+    snprintf(buf, 10, "XXX");
     start_dir = dir_reopen(thread_current()->cwd);
+    snprintf(buf, 10, "YYY");
+    free(buf);
   }
   while (true)
   {
@@ -398,4 +402,29 @@ bool dir_isempty (struct dir *dir)
     }
   }
   return true;
+}
+
+int dir_level_to_root(struct dir * dir)
+{
+  int level_num = 0;
+  struct inode *inode;
+  while (true)
+  {
+    dir_lookup(dir, "..", &inode);
+    if (level_num != 0)
+    {
+      dir_close(dir);
+    }
+    if (inode_is_root(inode))
+    {
+      inode_close(inode);
+      break;
+    }
+    else
+    {
+      dir = dir_open(inode);
+    }
+    level_num ++;
+  }
+  return level_num;
 }

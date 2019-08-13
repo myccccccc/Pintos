@@ -18,7 +18,7 @@
 #define NUM_DIRECT 12
 
 /* Total number of cache blocks */
-#define CACHE_BLOCKS_NUM 64
+#define CACHE_BLOCKS_NUM 100
 
 
 struct cache_block {
@@ -1042,4 +1042,13 @@ bool is_dir(struct inode* i) {
 
 int inode_open_cnt(struct inode * i) {
     return i->open_cnt;
+}
+
+bool inode_is_root(struct inode * inode)
+{
+    if (inode->sector == ROOT_DIR_SECTOR)
+    {
+        return true;
+    }
+    return false;
 }

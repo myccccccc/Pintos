@@ -37,5 +37,6 @@ int get_next_part (char part[NAME_MAX + 1], char **srcp);
 void dir_seek (struct dir *dir, off_t pos);
 off_t dir_tell (struct dir *dir);
 bool dir_isempty (struct dir *);
+int dir_level_to_root(struct dir *);
 
 #endif /* filesys/directory.h */

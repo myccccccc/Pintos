@@ -37,5 +37,6 @@ void cache_flush(void);
 void set_root_is_directory(void);
 bool is_dir(struct inode *);
 int inode_open_cnt(struct inode *);
+bool inode_is_root(struct inode *);
 
 #endif /* filesys/inode.h */

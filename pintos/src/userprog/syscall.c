@@ -39,11 +39,13 @@ static bool proc_chdir(char* dir_name);
 static int proc_inumber(int fd);
 static bool proc_isdir(int fd);
 static bool proc_readdir(int fd, char *name);
+//int isdir_count;
 
 void
 syscall_init (void)
 {
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
+  //isdir_count = 0;
 }
 
 static void
@@ -206,6 +208,7 @@ static bool proc_create(const char* f, unsigned initial_size) {
 
 static bool proc_remove(const char* f) {
     bool removed = filesys_remove(f);
+     //printf("REMOVE\n");
     return removed;
 }
 
@@ -311,6 +314,8 @@ static unsigned proc_tell(int fd) {
 
 static bool proc_mkdir(char* dir_name)
 {
+  //printf(" MKDIR %d\n", mkdir_count);
+  //mkdir_count++;
   struct dir *start_dir = NULL;
   char file_name[NAME_MAX + 1];
   start_dir = get_dir(dir_name, file_name);
@@ -319,6 +324,13 @@ static bool proc_mkdir(char* dir_name)
     return false;
   }
   block_sector_t inode_sector = 0;
+
+  if (dir_level_to_root(start_dir) > 208)
+  {
+    dir_close(start_dir);
+    return false;
+  }
+  
   if (free_map_allocate (1, &inode_sector) == false)
   {
     dir_close (start_dir);
@@ -349,7 +361,13 @@ static bool proc_chdir(char* dir_name)
   struct dir *d = goto_dir(dir_name);
   if (d != NULL)
   {
+    char *buf = malloc(10);
+    snprintf(buf, 10, "XXx");
+    dir_close(thread_current()->cwd);
+    snprintf(buf, 10, "XXx");
     thread_current()->cwd = d;
+    snprintf(buf, 10, "XXx");
+    free(buf);
     return true;
   }
   return false;

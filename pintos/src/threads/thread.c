@@ -673,7 +673,7 @@ struct wait_status *get_tid_wait_status(tid_t tid)
 
 struct process_file_map_elem* create_pfme(struct file* f) {
     int next = thread_current()->next_fd;
-    if (next < 128) {
+    if (true) {
         struct process_file_map_elem* pfme = malloc(sizeof(struct process_file_map_elem));
         if (pfme != NULL) {
             pfme->fd = next;
@@ -691,7 +691,7 @@ void push_back_pfme (struct process_file_map_elem* pfme) {
 
 void create_and_push_back_pfme (struct file* f) {
     struct process_file_map_elem* pfme = create_pfme(f);
-    if (f != NULL) {
+    if (pfme != NULL) {
         push_back_pfme(pfme);
     }
 }
