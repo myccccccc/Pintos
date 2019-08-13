@@ -29,7 +29,12 @@ enum
     SYS_MKDIR,                  /* Create a directory. */
     SYS_READDIR,                /* Reads a directory entry. */
     SYS_ISDIR,                  /* Tests if a fd represents a directory. */
-    SYS_INUMBER                 /* Returns the inode number for a fd. */
+    SYS_INUMBER,                 /* Returns the inode number for a fd. */
+
+    SYS_CACHE_HIT,               /* Returns if the most recent buffer cache search hit or not*/
+    SYS_CACHE_RESET,              /* Resets the buffer cache */
+
+    SYS_WRITE_CNT                 /* Gets the block device "fs_device"'s write count */
   };
 
 #endif /* lib/syscall-nr.h */

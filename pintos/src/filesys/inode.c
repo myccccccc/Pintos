@@ -39,6 +39,8 @@ unsigned clock_index;
 /* There can only be one thread in cache_blocks */
 struct lock cache_blocks_lock;
 
+//True if the most recent cache search (for a read or write) hits, false if it misses
+bool most_recent_cache_search_bool;
 
 /* On-disk inode.
    Must be exactly BLOCK_SECTOR_SIZE bytes long. */
@@ -129,6 +131,7 @@ static struct list open_inodes;
 /* Initializes the inode module. */
 void
 inode_init(void) {
+    most_recent_cache_search_bool = false;
     list_init(&open_inodes);
 }
 
@@ -905,6 +908,7 @@ void cache_read_at(block_sector_t sector, void *buffer)
   }
   if (index != CACHE_BLOCKS_NUM)
   {
+    most_recent_cache_search_bool = true;
     lock_release(&cache_blocks_lock);
     lock_acquire(&cache_blocks[index].block_lock);
     if (cache_blocks[index].sector_idx != sector)
@@ -915,6 +919,7 @@ void cache_read_at(block_sector_t sector, void *buffer)
   }
   else
   {
+    most_recent_cache_search_bool = false;
     find_a_cache_block = false;
     index = clock_index;
     while (!find_a_cache_block)
@@ -966,6 +971,7 @@ void cache_write_at(block_sector_t sector, void *buffer)
   }
   if (index != CACHE_BLOCKS_NUM)
   {
+    most_recent_cache_search_bool = true;
     lock_release(&cache_blocks_lock);
     lock_acquire(&cache_blocks[index].block_lock);
     if (cache_blocks[index].sector_idx != sector)
@@ -976,6 +982,7 @@ void cache_write_at(block_sector_t sector, void *buffer)
   }
   else
   {
+    most_recent_cache_search_bool = false;
     find_a_cache_block = false;
     index = clock_index;
     while (!find_a_cache_block)
@@ -1051,4 +1058,8 @@ bool inode_is_root(struct inode * inode)
         return true;
     }
     return false;
+}
+
+bool most_recent_cache_search(void) {
+    return most_recent_cache_search_bool;
 }

@@ -9,6 +9,7 @@
 #include "threads/vaddr.h"
 #include "threads/malloc.h"
 #include "devices/shutdown.h"
+#include "devices/block.h"
 #include "filesys/inode.h"
 #include "filesys/filesys.h"
 #include "filesys/file.h"
@@ -39,6 +40,11 @@ static bool proc_chdir(char* dir_name);
 static int proc_inumber(int fd);
 static bool proc_isdir(int fd);
 static bool proc_readdir(int fd, char *name);
+
+static bool proc_cache_hit(void);
+static void proc_cache_reset(void);
+
+static int proc_get_write_cnt(void);
 //int isdir_count;
 
 void
@@ -153,6 +159,15 @@ syscall_handler (struct intr_frame *f UNUSED)
     access_user_memory(args+2, f);
     access_user_memory((uint32_t*) *(args+2), f);
     f->eax = (int) proc_readdir(args[1], (char *) args[2]);
+  }
+  else if (args[0] == SYS_CACHE_HIT) {
+    f->eax = (int) proc_cache_hit();
+  }
+  else if (args[0] == SYS_CACHE_RESET) {
+    proc_cache_reset();
+  }
+  else if (args[0] == SYS_WRITE_CNT) {
+    f->eax = proc_get_write_cnt();
   }
 }
 
@@ -437,4 +452,17 @@ static bool proc_readdir(int fd, char *name)
       }
     }
   } 
+}
+
+static bool proc_cache_hit(void) {
+    return most_recent_cache_search();
+}
+
+static void proc_cache_reset(void) {
+    cache_flush();
+    inode_cache_init();
+}
+
+static int proc_get_write_cnt(void) {
+    return get_num_writes(fs_device);
 }

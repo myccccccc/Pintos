@@ -221,3 +221,6 @@ list_elem_to_block (struct list_elem *list_elem)
           : NULL);
 }
 
+int get_num_writes(struct block* blk) {
+    return (int) blk->write_cnt;
+}

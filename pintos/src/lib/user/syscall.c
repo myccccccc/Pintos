@@ -188,3 +188,15 @@ inumber (int fd)
 {
   return syscall1 (SYS_INUMBER, fd);
 }
+
+bool buffer_cache_hit(void) {
+    return syscall0(SYS_CACHE_HIT);
+}
+
+void buffer_cache_reset(void) {
+    syscall0(SYS_CACHE_RESET);
+}
+
+int get_write_cnt(void) {
+    return syscall0(SYS_WRITE_CNT);
+}

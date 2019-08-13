@@ -39,4 +39,6 @@ bool is_dir(struct inode *);
 int inode_open_cnt(struct inode *);
 bool inode_is_root(struct inode *);
 
+bool most_recent_cache_search(void);
+
 #endif /* filesys/inode.h */
