@@ -45,7 +45,8 @@ three final failing test cases might have saved a lot of time.
 
 **TESTING REPORT:**
 
-_Test 1_
+**_Test 1_**
+
 **1)** In this test, we verified that the hit rate of a cold cache on a given file is lower than the hit rate of the cache after it has read the file once.
 
 **2)** First, we create a file, "test1", with size 500 bytes (filled initially with arbitrary values), and then open that file. Resetting the buffer cache takes place after this due
@@ -137,7 +138,8 @@ the boolean behind the syscall starts off as false by default), and the second s
 our hit rates would be 6/8 and 7/8 for the cold and hot caches, respectively.
 
 
-_Test 2_
+**_Test 2_**
+
 **1)** In this test, we checked that our buffer cache was able to coalesce writes to the same sector efficiently, such that
 the total number of device writes (writes to disk) was minimized over a byte-by-byte write then read of a large file.
 
