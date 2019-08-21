@@ -1,0 +1,18 @@
+Use objdump with the -D flag on the map executable. Which of the addresses from the output of running ./map are defined in the executable, and which segment/section is each defined in?
+The address of main, recur and static data stuff. The address of main, recur are in .text, the address of static data stuff is in .data.
+
+Make a list of the important segments, and what they are used for (look up their names on the Internet if you don’t know).
+.text is an ipmortant segment (it stores all the code.)
+.data and .bss are important segments (they stores all the staticly allocated variable)
+
+What direction is the stack growing in?
+down
+
+How large is the stack frame for each recursive call?
+48 bytes
+
+Where is the heap? What direction is it growing in?
+0x602260 up
+
+Are the two malloc()ed memory areas contiguous?
+not contiguous, 12 bytes between

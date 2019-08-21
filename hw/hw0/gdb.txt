@@ -1,0 +1,53 @@
+(gdb) print argv
+$2 = (char **) 0x7fffffffe4d8
+
+(gdb) print argv[0]
+$3 = 0x7fffffffe750 "/home/vagrant/code/personal/hw0/wc"
+
+(gdb) info address main
+Symbol "main" is a function at address 0x40089d.
+
+(gdb) info stack
+#0  main (argc=2, argv=0x7fffffffe4d8) at wc.c:64
+(Shows the name of the function of current stack frame and arguments' values.)
+
+(gdb) info frame
+Stack level 0, frame at 0x7fffffffe400:
+ rip = 0x4008dd in main (wc.c:64); saved rip = 0x7ffff7a32f45
+ source language c.
+ Arglist at 0x7fffffffe3f0, args: argc=2, argv=0x7fffffffe4d8
+ Locals at 0x7fffffffe3f0, Previous frame's sp is 0x7fffffffe400
+ Saved registers:
+  rbp at 0x7fffffffe3f0, rip at 0x7fffffffe3f8
+(Shows information about the current stack frame including stack pointers and register values.)
+
+(gdb) info registers
+rax            0x40089d	4196509
+rbx            0x0	0
+rcx            0x0	0
+rdx            0x7fffffffe4f0	140737488348400
+rsi            0x7fffffffe4d8	140737488348376
+rdi            0x2	2
+rbp            0x7fffffffe3f0	0x7fffffffe3f0
+rsp            0x7fffffffe3d0	0x7fffffffe3d0
+r8             0x7ffff7dd4e80	140737351863936
+r9             0x7ffff7dea600	140737351951872
+r10            0x7fffffffe280	140737488347776
+r11            0x7ffff7a32e50	140737348054608
+r12            0x4006b0	4196016
+r13            0x7fffffffe4d0	140737488348368
+r14            0x0	0
+r15            0x0	0
+rip            0x4008dd	0x4008dd <main+64>
+eflags         0x246	[ PF ZF IF ]
+cs             0x33	51
+ss             0x2b	43
+ds             0x0	0
+es             0x0	0
+fs             0x0	0
+---Type <return> to continue, or q <return> to quit---
+gs             0x0	0
+(Shows the values of all the currently used registers.)
+
+
+

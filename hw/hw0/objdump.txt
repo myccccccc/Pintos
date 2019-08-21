@@ -1,0 +1,12 @@
+What file format is used for this binary? And what architecture is it compiled for?
+file format elf64-x86-64		  architecture: i386:x86-64
+
+What are some of the names of segment/sections you find?
+.interp .note.ABI-tag .note.gnu.build-id .gnu.hash .dynsym .dynstr .gnu.version .gnu.version_r
+
+What segment/section contains main (the function) and what is the address of main? (It should
+be the same as what you saw in gdb)
+The .text segment contains main.  The address is 000000000040089d.
+
+Do you see the stack segment anywhere? What about the heap? Explain.
+No.  Because these segments aren't created until the executable is run.
